@@ -1,5 +1,5 @@
 #
-# $Id: makefile,v 1.2 2004-06-05 19:45:18 dds Exp $
+# $Id: makefile,v 1.3 2004-06-05 19:48:09 dds Exp $
 #
 
 VERSION=1.22
@@ -11,24 +11,12 @@ WEB=/dds/pubs/web/home/sw/outwit
 ZIP=zip
 
 all:
-	cd winclip
-	nmake
-	cd ..
-	cd odbc
-	nmake
-	cd ..
-	cd docprop
-	nmake /f docprop.mak CFG="docprop - Win32 Release"
-	cd ..
-	cd winreg
-	nmake /f winreg.mak CFG="winreg - Win32 Release"
-	cd ..
-	cd readlink
-	nmake
-	cd ..
-	cd readlog
-	nmake
-	cd ..
+	cd winclip ; nmake
+	cd odbc ;  nmake
+	cd docprop ; nmake /f docprop.mak CFG="docprop - Win32 Release"
+	cd winreg ; nmake /f winreg.mak CFG="winreg - Win32 Release"
+	cd readlink ; nmake
+	cd readlog ; nmake
 
 clearweb:
 	rm -rf $(WEB)
