@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.12 2002-01-03 12:33:09 dds Exp $
+ * $Id: winclip.c,v 1.13 2002-01-03 13:01:10 dds Exp $
  *
  */
 
@@ -50,7 +50,7 @@ void
 usage(void)
 {
 	fprintf(stderr, 
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.12 $\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.13 $\n"
 		"(C) Copyright 1994-2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -149,8 +149,22 @@ main(int argc, char *argv[])
 
 				nfiles = DragQueryFile(hglb, 0xFFFFFFFF, NULL, 0);
 				for (i = 0; i < nfiles; i++) {
-					DragQueryFile(hglb, i, fname, sizeof(fname));
-					fprintf(iofile, "%s\n", fname);
+					switch (textfmt) {
+					case CF_TEXT:	/* Windows native */
+						DragQueryFileA(hglb, i, fname, sizeof(fname));
+						fprintf(iofile, "%s\n", fname);
+						break;
+					case CF_UNICODETEXT:
+						DragQueryFileW(hglb, i, fname, sizeof(fname));
+						setmode(fileno(iofile), O_BINARY);
+						fwprintf(iofile, L"%s\n", fname);
+						break;
+					case CF_OEMTEXT:
+						DragQueryFileA(hglb, i, fname, sizeof(fname));
+						CharToOemBuff(fname, fname, strlen(fname));
+						fprintf(iofile, "%s\n", fname);
+						break;
+					}
 				}
 			}
 			CloseClipboard(); 

@@ -11,7 +11,7 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.4 2002-01-03 12:33:43 dds Exp $
+.\" $Id: winclip.1,v 1.5 2002-01-03 13:01:10 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
@@ -54,12 +54,15 @@ Transfer text in the Windows-native format (CF_TEXT) instead of the
 (default) DOS-native format (CF_OEMTEXT).
 The Windows format is also known as ANSI text, but often represents
 another Windows and locale-specific code page.
-Setting this option will affect how non-ASCII characters will be encoded.
+Setting this option will affect how non-ASCII characters will be encoded
+for clipboard text and copied file icons.
 .IP "\fB\-u\fP"
 Transfer text in Unicode format (CF_UNICODETEXT) instead of the
 (default) DOS-native format (CF_OEMTEXT).
 The Unicode encoding is the same as the one used by the Windows clipboard:
 apparently UCS-16 in little-endian byte order.
+Setting this option will affect how non-ASCII characters will be encoded
+for clipboard text and copied file icons.
 .SH EXAMPLE
 dir /b | winclip -c
 .br
