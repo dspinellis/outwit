@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.7 2000-03-27 14:13:59 dds Exp $
+ * $Id: winclip.c,v 1.8 2000-04-01 12:32:26 dds Exp $
  *
  */
 
@@ -49,10 +49,21 @@ error(char *s)
 void
 usage(void)
 {
-	fprintf(stderr, "$Id: winclip.c,v 1.7 2000-03-27 14:13:59 dds Exp $\n"
-			"(C) Copyright 1998-1999 Diomidis Spinellis.\n"
-			"May be freely copied without modification.\n\n"
-			"usage: winclip -c|-p\n");
+	fprintf(stderr, 
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.8 $\n"
+		"(C) Copyright 1994, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+
+		"Permission to use, copy, and distribute this software and its\n"
+		"documentation for any purpose and without fee is hereby granted,\n"
+		"provided that the above copyright notice appear in all copies and that\n"
+		"both that copyright notice and this permission notice appear in\n"
+		"supporting documentation.\n\n"
+
+		"THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED\n"
+		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
+		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+
+		"usage: winclip -c|-p\n");
 	exit(1);
 }
 
