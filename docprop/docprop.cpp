@@ -3,7 +3,7 @@
  *
  * D. Spinellis
  *
- * $Id: docprop.cpp,v 1.2 1999-11-21 13:24:31 dds Exp $
+ * $Id: docprop.cpp,v 1.3 2000-01-27 07:11:21 dds Exp $
  *
  */
 
@@ -268,10 +268,10 @@ usage(char *s)
 {
 	int i;
 
-	fprintf(stderr, "Usage: %s -f format filename ...\n"
-			"\tformat is a string with embedded variable names in braces {variable}\n"
-			"\tand C escape codes.\n"
-			"\tThe following (and all user-defined) variable names can be used:\n", s);
+	fprintf(stderr, "Usage: %s [-f format] filename ...\n"
+			"\tFormat is a string with embedded property names in braces\n"
+			"\t(e.g. {variable}) and C escape codes.\n"
+			"\tThe following (and all user-defined) property names can be used:\n", s);
 	fprintf(stderr, "\t{Filename}");
 	for (i = 0; summary_pidsi[i].name; i++)
 		fprintf(stderr, ", {%s}", summary_pidsi[i].name);
