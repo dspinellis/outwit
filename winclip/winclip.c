@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.5 1999-11-15 19:59:20 dds Exp $
+ * $Id: winclip.c,v 1.6 2000-03-25 18:29:00 dds Exp $
  *
  */
 
@@ -59,7 +59,7 @@ main(int argc, char *argv[])
 	int n;
 
 	if (argc > 2 || (argc == 2 && *argv[1] == '-')) {
-		fprintf(stderr, "$Id: winclip.c,v 1.5 1999-11-15 19:59:20 dds Exp $\n"
+		fprintf(stderr, "$Id: winclip.c,v 1.6 2000-03-25 18:29:00 dds Exp $\n"
 				"(C) Copyright 1998-1999 Diomidis Spinellis.\n"
 				"May be freely copied without modification.\n\n"
 				"usage: winclip [filename]\n");
@@ -119,7 +119,8 @@ main(int argc, char *argv[])
 
 				if (!GetObject(hglb, sizeof(BITMAP), &bmp))
 					error("Unable to get bitmap dimensions");
-				printf("P3\n%d %d\n255\n", bmp.bmWidth, bmp.bmHeight);
+				_setmode(_fileno(stdout), _O_BINARY );
+				printf("P6\n%d %d\n255\n", bmp.bmWidth, bmp.bmHeight);
 				if ((hdc = CreateCompatibleDC(NULL)) == NULL)
 					error("Unable to create a compatible device context");
 				if ((oldobj = SelectObject(hdc, hglb)) == NULL)
@@ -127,10 +128,9 @@ main(int argc, char *argv[])
 				for (y = 0; y < bmp.bmHeight; y++)
 					for (x = 0; x < bmp.bmWidth; x++) {
 						cref = GetPixel(hdc, x, y);
-						printf("%d %d %d\n",
-							GetRValue(cref),
-							GetGValue(cref),
-							GetBValue(cref));
+						putchar(GetRValue(cref));
+						putchar(GetGValue(cref));
+						putchar(GetBValue(cref));
 					}
 				SelectObject(hdc, oldobj);
 				DeleteDC(hdc);
