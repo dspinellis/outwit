@@ -2,7 +2,7 @@
  *
  * winreg - Windows registry text-based access
  *
- * (C) Copyright 1999, 2000 Diomidis Spinellis
+ * (C) Copyright 1999-2003 Diomidis Spinellis
  * 
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.10 2003-12-07 10:15:14 dds Exp $
+ * $Id: winreg.c,v 1.11 2003-12-22 13:51:00 dds Exp $
  *
  */
 
@@ -214,8 +214,16 @@ print_key(HKEY key, char *basename)
 		odatalen = datalen;
 		switch (ret = RegEnumValue(key, i, name, &onamelen, NULL, &type, data, &odatalen)) {
 		case ERROR_SUCCESS:
-			if (o_print_name)
-				printf("%s\\%s\\%s", rootname, basename, name);
+			if (o_print_name) {
+				char *p;
+				printf("%s\\%s\\", rootname, basename);
+				/* Print name escaping backslashes */
+				for (p = name; *p; p++) {
+					if (*p == '\\')
+						putchar('\\');
+					putchar(*p);
+				}
+			}
 			print_value(type, data, odatalen);
 			putchar('\n');
 			break;
@@ -343,7 +351,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"winreg - Windows registry text-based access.  $Revision: 1.10 $\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.11 $\n"
 		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -430,11 +438,25 @@ addkey(char *name, DWORD type, char *value, int datalen)
 	char rname[100];
 	HKEY key;
 	LONG ret;
+	char *s, *d;
 
 	if (o_verify)
 			return;
 	kname = split_name(name, &root, rname);
-	vname = strrchr(kname, '\\');
+	/* Locate last backslash, ignoring and fixing escaped ones */
+	vname = NULL;
+	for (s = d = kname + strlen(kname) - 1; s >= kname; s--, d--) {
+		*d = *s;
+		if (*s == '\\')
+			if (s != kname && s[-1] == '\\')
+				s--;
+			else {
+				vname = d;
+				*s = '\0';
+				break;
+			}
+	}
+
 	if (vname) {
 		*vname = '\0';
 		vname++;
@@ -479,7 +501,7 @@ input_process(void)
 	char type[100];
 	unsigned char *data;
 	int namelen, datalen;
-	int nameidx, typeidx, dataidx;
+	int nameidx, typeidx, dataidx = 0;
 	enum {SNAME = 1000, STYPE, REG_BINARY2, REG_SZ_BACK, REG_SZ_HEX, REG_SZ_HEX2} 
 		state;
 	int c;
