@@ -1,6 +1,6 @@
 /*
  *
- * readlog - Windows log text-based access
+ * readlog - Windows event log text-based access
  *
  * (C) Copyright 2002 Diomidis Spinellis
  * 
@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.4 2002-07-10 10:38:37 dds Exp $
+ * $Id: readlog.c,v 1.5 2002-07-10 10:56:46 dds Exp $
  *
  */
 
@@ -45,7 +45,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.4 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.5 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -111,7 +111,6 @@ main(int argc, char *argv[])
 			usage(argv[0]);
 		}
 
-
 	if (argv[optind] != NULL) {
 		if (argv[optind + 1] != NULL)
 			usage(argv[0]);
@@ -121,7 +120,6 @@ main(int argc, char *argv[])
 	print_log();
 	return (0);
 }
-
 
 
 static char *
@@ -192,25 +190,34 @@ static char *
 get_message(char *msgfile, DWORD id, char *argv[])
 {
 	HINSTANCE mh;
-	char *outmsg;
+	char *outmsg, *p;
 
-	/* TODO: cache opened libraries */
-	if ((mh = LoadLibraryEx(msgfile, NULL, LOAD_LIBRARY_AS_DATAFILE)) == NULL) {
-		wperror(msgfile, GetLastError());
-		return NULL;
+	for (;;) {
+		p = strchr(msgfile, ';');
+		if (p)
+			*p = 0;
+		if ((mh = LoadLibraryEx(msgfile, NULL, LOAD_LIBRARY_AS_DATAFILE)) == NULL) {
+			wperror(msgfile, GetLastError());
+			return NULL;
+		}
+		if (FormatMessage(
+		    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+		    FORMAT_MESSAGE_FROM_HMODULE |
+		    FORMAT_MESSAGE_ARGUMENT_ARRAY,
+		    mh, id, 0, (LPTSTR)&outmsg, 1024, argv)) {
+			FreeLibrary(mh);
+			return (outmsg);
+		}
+		if (p && GetLastError() == ERROR_MR_MID_NOT_FOUND)
+			msgfile = p + 1;
+		else {
+			wperror("FormatMessage", GetLastError());
+			FreeLibrary(mh);
+			return NULL;
+		}
 	}
-	if (FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-		FORMAT_MESSAGE_FROM_HMODULE |
-		FORMAT_MESSAGE_ARGUMENT_ARRAY,
-		mh, id, 0, (LPTSTR)&outmsg, 1024, argv) == 0) {
-		wperror("FormatMessage", GetLastError());
-		FreeLibrary(mh);
-		return NULL;
-	}
-	FreeLibrary(mh);
-	return (outmsg);
 }
+
 static int
 get_regentry(HANDLE rh, char *name, char *result)
 {
