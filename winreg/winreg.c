@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.6 2002-07-10 21:52:29 dds Exp $
+ * $Id: winreg.c,v 1.7 2003-02-28 17:58:27 dds Exp $
  *
  */
 
@@ -235,7 +235,7 @@ print_registry(char *pkeyname)
 	LONG ret;
 
 	if ((ret = RegOpenKeyEx(rootkey, pkeyname, 0, KEY_READ, &key)) != ERROR_SUCCESS) {
-		wperror("RegOpenKeyEx", ret);
+		wperror(pkeyname, ret);
 		return (-1);
 	}
 
@@ -329,7 +329,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"winreg - Windows registry text-based access.  $Revision: 1.6 $\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.7 $\n"
 		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
