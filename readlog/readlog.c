@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.12 2004-11-19 11:42:05 dds Exp $
+ * $Id: readlog.c,v 1.13 2004-11-19 14:43:26 dds Exp $
  *
  */
 
@@ -47,7 +47,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.12 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.13 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -164,10 +164,16 @@ static void
 print_time(EVENTLOGRECORD *pelr)
 {
 	char buff[512];
+	time_t *t;
+	static time_t y2038 = (time_t)0x7fffffff;
 
 	if (!*time_fmt)
 		return;
-	strftime(buff, sizeof(buff), time_fmt, localtime((time_t *)(&(pelr->TimeGenerated))));
+	// Under VC 5 -ve time_ts have localtime return NULL
+	t = localtime((time_t *)(&(pelr->TimeGenerated)));
+	if (!t)
+		t = localtime(&y2038);
+	strftime(buff, sizeof(buff), time_fmt, t);
 	printf("%s ", buff);
 }
 
