@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.7 2003-02-28 17:58:27 dds Exp $
+ * $Id: winreg.c,v 1.8 2003-03-02 18:17:32 dds Exp $
  *
  */
 
@@ -37,6 +37,7 @@ static int o_print_value = 1;
 static int o_verify = 0;
 static int o_print_decimal = 0;
 static char field_sep = '\t';
+static char *remote = NULL;	/* Remote machine name */
 
 extern char	*optarg;	/* Global argument pointer. */
 extern int	optind;		/* Global argv index. */
@@ -329,8 +330,8 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"winreg - Windows registry text-based access.  $Revision: 1.7 $\n"
-		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.8 $\n"
+		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -342,8 +343,9 @@ usage(char *fname)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: %s [-F c] [-ntvdc] [key]\n"
-		"\t-f c\tField separator (default is tab)\n"
+		"usage: %s [-F c] [-r name] [-ntvdc] [key]\n"
+		"\t-F c\tField separator (default is tab)\n"
+		"\t-r name\tAccess the registry of remote machine with specified name\n"
 		"\t-n\tDo not print key names\n"
 		"\t-t\tDo not print key types\n"
 		"\t-v\tDo not print key values\n"
@@ -372,22 +374,31 @@ hexval(unsigned char c)
 }
 
 /*
- * Split a registry key name into its root name (setting rootkey)
+ * Split a registry key name into its root name (setting rkey)
  * returning a pointer to the rest.
+ * If connection to a remote computer has been specified rkey is
+ * set to that machine's handle.
+ * In that case the returned rkey must be passed to a call to RegCloseKey
  */
 static char *
 split_name(char *name, HKEY *rkey, char *rname)
 {
 	char *s, *p;
+	LONG ret;
 
 	for (s = name, p = rname; *s && *s != '\\'; s++, p++)
 		*p = *s;
 	*p = '\0';
 	if (*s == '\\')
 		s++;
-	if (nameval(handles, sizeof(handles) / sizeof(struct s_nameval), rname, (DWORD *)rkey))
+	if (nameval(handles, sizeof(handles) / sizeof(struct s_nameval), rname, (DWORD *)rkey)) {
+		if (remote) {
+			/* Redirect to the remote machine */
+			if ((ret = RegConnectRegistry(remote, *rkey, rkey)) != ERROR_SUCCESS)
+				wperror(remote, ret);
+		}
 		return (*s ? s : NULL);
-	else {
+	} else {
 		fprintf(stderr, "Unknown root handle name [%s]\n", rname);
 		exit(1);
 	}
@@ -421,6 +432,8 @@ addkey(char *name, DWORD type, char *value, int datalen)
 		if ((ret = RegSetValueEx(key, vname, 0, type, value, datalen)) != ERROR_SUCCESS)
 			wperror("RegSetValueEx", ret);
 	if ((ret = RegCloseKey(key)) != ERROR_SUCCESS)
+		wperror("RegCloseKey", ret);
+	if (remote && (ret = RegCloseKey(root)) != ERROR_SUCCESS)
 		wperror("RegCloseKey", ret);
 }
 
@@ -576,12 +589,17 @@ main(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "F:ntvcd")) != EOF)
+	while ((c = getopt(argc, argv, "F:ntvcdr:")) != EOF)
 		switch (c) {
 		case 'F':
 			if (!optarg || optarg[1])
 				usage(argv[0]);
 			field_sep = *optarg;
+			break;
+		case 'r':
+			if (!optarg)
+				usage(argv[0]);
+			remote = strdup(optarg);
 			break;
 		case 'n': o_print_name = 0; break;
 		case 't': o_print_type = 0; break;
@@ -594,10 +612,14 @@ main(int argc, char *argv[])
 
 
 	if (argv[optind] != NULL) {
+		LONG ret;
+
 		if (argv[optind + 1] != NULL)
 			usage(argv[0]);
 		/* Dump a key */
 		print_registry(split_name(argv[optind], &rootkey, rootname));
+		if (remote && (ret = RegCloseKey(rootkey)) != ERROR_SUCCESS)
+			wperror("RegCloseKey", ret);
 	} else
 		/* Read input and add keys */
 		input_process();
