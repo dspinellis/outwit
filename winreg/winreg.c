@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.5 2000-04-13 16:32:05 dds Exp $
+ * $Id: winreg.c,v 1.6 2002-07-10 21:52:29 dds Exp $
  *
  */
 
@@ -85,6 +85,8 @@ print_value(int type, unsigned char *data, int len)
 		case REG_NONE: printf("NONE"); break;
 		case REG_LINK: printf("LINK"); break;
 		case REG_RESOURCE_LIST: printf("RESOURCE_LIST"); break;
+		case REG_FULL_RESOURCE_DESCRIPTOR: printf("FULL_RESOURCE_DESCRIPTOR"); break;
+		case REG_RESOURCE_REQUIREMENTS_LIST: printf("RESOURCE_REQUIREMENTS_LIST"); break;
 		default:
 			fprintf(stderr, "Unknown registry type: 0x%x\n", type);
 			break;
@@ -116,6 +118,8 @@ print_value(int type, unsigned char *data, int len)
 			/* FALLTHROUGH */
 		case REG_LINK:
 		case REG_RESOURCE_LIST:
+		case REG_FULL_RESOURCE_DESCRIPTOR:
+		case REG_RESOURCE_REQUIREMENTS_LIST:
 			for (i = 0; i < len; i++)
 				printf("%02x ", data[i]);
 			break;
@@ -300,6 +304,8 @@ struct s_nameval types[] = {
 	{"NONE", REG_NONE},
 	{"LINK", REG_LINK},
 	{"RESOURCE_LIST", REG_RESOURCE_LIST},
+	{"FULL_RESOURCE_DESCRIPTOR", REG_FULL_RESOURCE_DESCRIPTOR},
+	{"RESOURCE_REQUIREMENTS_LIST", REG_RESOURCE_REQUIREMENTS_LIST},
 };
 
 /*
@@ -323,7 +329,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"winreg - Windows registry text-based access.  $Revision: 1.5 $\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.6 $\n"
 		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -492,6 +498,8 @@ input_process(void)
 		case REG_DWORD:
 		case REG_LINK:
 		case REG_RESOURCE_LIST:
+		case REG_FULL_RESOURCE_DESCRIPTOR:
+		case REG_RESOURCE_REQUIREMENTS_LIST:
 			if (c == '\n') {
 				if (typeval == REG_DWORD) {
 					if (dataidx != 4) {
