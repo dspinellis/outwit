@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.1 1999-06-02 07:02:32 dds Exp $
+ * $Id: winclip.c,v 1.2 1999-06-02 07:03:53 dds Exp $
  *
  */
 
@@ -60,7 +60,7 @@ main(int argc, char *argv[])
 	int n;
 
 	if (argc > 2 || (argc == 2 && *argv[1] == '-')) {
-		fprintf(stderr, "$Id: winclip.c,v 1.1 1999-06-02 07:02:32 dds Exp $\n"
+		fprintf(stderr, "$Id: winclip.c,v 1.2 1999-06-02 07:03:53 dds Exp $\n"
 				"Copyright 1998 Diomidis Spinellis.  "
 				"May be freely copied without modification.\n\n"
 				"usage: winclip [filename]\n");
@@ -98,9 +98,10 @@ main(int argc, char *argv[])
 		}
 		CloseClipboard(); 
 		return (0);
-	} else if (isatty(1)) {
+	} else if (isatty(1) || (argc == 2)) {
 		/*
-		 * We are the last process in the pipeline.
+		 * We are the last process in the pipeline, or
+		 * the user has specified an input file.
 		 * Copy our input to the Windows Clipboard
 		 */
 		if (!OpenClipboard(NULL))
