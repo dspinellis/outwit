@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.9 2003-03-07 09:44:14 dds Exp $
+ * $Id: winreg.c,v 1.10 2003-12-07 10:15:14 dds Exp $
  *
  */
 
@@ -26,6 +26,11 @@
 #include <stdio.h>
 #include <assert.h>
 
+/* So we can compile with older SDKs */
+#ifndef REG_QWORD
+#define REG_QWORD 11
+#endif
+
 /* The name and value of the root handle (HKEY_...) */
 static char rootname[1024];
 static HKEY rootkey;
@@ -36,6 +41,7 @@ static int o_print_type = 1;
 static int o_print_value = 1;
 static int o_verify = 0;
 static int o_print_decimal = 0;
+static int o_ignore_error = 0;
 static char field_sep = '\t';
 static char *remote = NULL;	/* Remote machine name */
 
@@ -62,7 +68,8 @@ wperror(char *s, LONG err)
 	);
 	fprintf(stderr, "%s: %s\n", s, lpMsgBuf);
 	LocalFree(lpMsgBuf);
-	exit(1);
+	if (!o_ignore_error)
+		exit(1);
 }
 
 /*
@@ -88,6 +95,7 @@ print_value(int type, unsigned char *data, int len)
 		case REG_RESOURCE_LIST: printf("RESOURCE_LIST"); break;
 		case REG_FULL_RESOURCE_DESCRIPTOR: printf("FULL_RESOURCE_DESCRIPTOR"); break;
 		case REG_RESOURCE_REQUIREMENTS_LIST: printf("RESOURCE_REQUIREMENTS_LIST"); break;
+		case REG_QWORD: printf("QWORD"); break;
 		default:
 			fprintf(stderr, "Unknown registry type: 0x%x\n", type);
 			break;
@@ -154,6 +162,10 @@ print_value(int type, unsigned char *data, int len)
 			}
 			break;
 		case REG_NONE:
+			break;
+		case REG_QWORD:
+			printf("%08x", *((unsigned int *)data + 1));
+			printf("%08x", *(unsigned int *)data);
 			break;
 		default:
 			fprintf(stderr, "Unknown registry type: 0x%x\n", type);
@@ -307,6 +319,7 @@ struct s_nameval types[] = {
 	{"RESOURCE_LIST", REG_RESOURCE_LIST},
 	{"FULL_RESOURCE_DESCRIPTOR", REG_FULL_RESOURCE_DESCRIPTOR},
 	{"RESOURCE_REQUIREMENTS_LIST", REG_RESOURCE_REQUIREMENTS_LIST},
+	{"QWORD", REG_QWORD},
 };
 
 /*
@@ -330,7 +343,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"winreg - Windows registry text-based access.  $Revision: 1.9 $\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.10 $\n"
 		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -349,6 +362,7 @@ usage(char *fname)
 		"\t-n\tDo not print key names\n"
 		"\t-t\tDo not print key types\n"
 		"\t-v\tDo not print key values\n"
+		"\t-i\tIgnore errors in registry operations and continue processing\n"
 		"\t-d\tOutput DWORD and binary data of (1, 2, 4) bytes in decimal\n"
 		"\t\twarning: decimal output can not be parsed for input\n"
 		"\t-c\tCheck input, do not enter keys into registry\n\n", fname
@@ -438,19 +452,19 @@ addkey(char *name, DWORD type, char *value, int datalen)
 }
 
 /* 
- * Swap around the bytes of data to match the Intel DWORD endianess
+ * Swap around the bytes of data to match the Intel endianess
  */
 static void
-swapbytes(unsigned char *data)
+swapbytes(unsigned char *data, int len)
 {
 		unsigned char tmp;
+		int i;
 
-		tmp = data[0];
-		data[0] = data[3];
-		data[3] = tmp;
-		tmp = data[2];
-		data[2] = data[1];
-		data[1] = tmp;
+		for (i = 0; i < len / 2; i++ ) {
+			tmp = data[i];
+			data[i] = data[len - 1 - i];
+			data[len - 1 - i] = tmp;
+		}
 }
 
 /*
@@ -511,6 +525,7 @@ input_process(void)
 			break;
 		case REG_BINARY:
 		case REG_DWORD:
+		case REG_QWORD:
 		case REG_LINK:
 		case REG_RESOURCE_LIST:
 		case REG_FULL_RESOURCE_DESCRIPTOR:
@@ -521,7 +536,13 @@ input_process(void)
 						fprintf(stderr, "Line :%d: not a four byte DWORD\n", line);
 						exit(1);
 					}
-					swapbytes(data);
+					swapbytes(data, dataidx);
+				} else if (typeval == REG_QWORD) {
+					if (dataidx != 8) {
+						fprintf(stderr, "Line :%d: not an eight byte QWORD\n", line);
+						exit(1);
+					}
+					swapbytes(data, dataidx);
 				}
 		addkey:
 				addkey(name, typeval, data, dataidx);
@@ -591,7 +612,7 @@ main(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "F:ntvcdr:")) != EOF)
+	while ((c = getopt(argc, argv, "F:ntvcdr:i")) != EOF)
 		switch (c) {
 		case 'F':
 			if (!optarg || optarg[1])
@@ -608,6 +629,7 @@ main(int argc, char *argv[])
 		case 'v': o_print_value = 0; break;
 		case 'c': o_verify = 1; break;
 		case 'd': o_print_decimal = 1; break;
+		case 'i': o_ignore_error = 1; break;
 		case '?':
 			usage(argv[0]);
 		}
