@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.4 1999-06-09 10:33:59 dds Exp $
+ * $Id: winclip.c,v 1.5 1999-11-15 19:59:20 dds Exp $
  *
  */
 
@@ -59,7 +59,7 @@ main(int argc, char *argv[])
 	int n;
 
 	if (argc > 2 || (argc == 2 && *argv[1] == '-')) {
-		fprintf(stderr, "$Id: winclip.c,v 1.4 1999-06-09 10:33:59 dds Exp $\n"
+		fprintf(stderr, "$Id: winclip.c,v 1.5 1999-11-15 19:59:20 dds Exp $\n"
 				"(C) Copyright 1998-1999 Diomidis Spinellis.\n"
 				"May be freely copied without modification.\n\n"
 				"usage: winclip [filename]\n");
@@ -103,6 +103,37 @@ main(int argc, char *argv[])
 					DragQueryFile(hglb, i, fname, sizeof(fname));
 					printf("%s\n", fname);
 				}
+			}
+			CloseClipboard(); 
+			return (0);
+		} else if (IsClipboardFormatAvailable(CF_BITMAP)) {
+			/* Clipboard contains a bitmap; dump it */
+			hglb = GetClipboardData(CF_BITMAP);
+			if (hglb != NULL) { 
+				SIZE dim;
+				BITMAP bmp;
+				HDC hdc;
+				int x, y;
+				COLORREF cref;
+				HGDIOBJ oldobj;
+
+				if (!GetObject(hglb, sizeof(BITMAP), &bmp))
+					error("Unable to get bitmap dimensions");
+				printf("P3\n%d %d\n255\n", bmp.bmWidth, bmp.bmHeight);
+				if ((hdc = CreateCompatibleDC(NULL)) == NULL)
+					error("Unable to create a compatible device context");
+				if ((oldobj = SelectObject(hdc, hglb)) == NULL)
+					error("Unable to select object");
+				for (y = 0; y < bmp.bmHeight; y++)
+					for (x = 0; x < bmp.bmWidth; x++) {
+						cref = GetPixel(hdc, x, y);
+						printf("%d %d %d\n",
+							GetRValue(cref),
+							GetGValue(cref),
+							GetBValue(cref));
+					}
+				SelectObject(hdc, oldobj);
+				DeleteDC(hdc);
 			}
 			CloseClipboard(); 
 			return (0);
