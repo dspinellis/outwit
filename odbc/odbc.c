@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: odbc.c,v 1.3 2003-12-02 08:17:36 dds Exp $
+ * $Id: odbc.c,v 1.4 2003-12-02 08:33:21 dds Exp $
  *
  */
 
@@ -41,11 +41,11 @@ struct s_coldata {
 extern char	*optarg;	/* Global argument pointer. */
 extern int	optind;		/* Global argv index. */
 
-void
-usage(char *fname)
+static void
+version(void)
 {
-	fprintf(stderr, 
-		"odbc - select data from relational databases.  $Revision: 1.3 $\n"
+	printf(
+		"odbc - select data from relational databases.  $Revision: 1.4 $\n"
 		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -56,16 +56,25 @@ usage(char *fname)
 
 		"THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED\n"
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
-		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n");
+}
 
-		"usage: %s [-R RS] [-F FS] [-u UID] [-a AS] [-h] DSN stmt\n"
+static void
+usage(char *fname)
+{
+	fprintf(stderr, 
+		"usage: %s [-v] [-R RS] [-F FS] [-h] DRVC stmt\n"
 		"\tRS\tRecord separator (default is newline)\n"
 		"\tFS\tField separator (default is tab)\n"
-		"\tUID\tUser identifier (default is empty)\n"
-		"\tAS\tAuthorization string (default is empty)\n"
-		"\tDSN\tODBC Data Source Name\n"
-		"\t-h\tPrint headings on first line\n"
-		"\tstmt\tA valid SELECT statement\n\n", fname
+		"\tDRVC\tODBC driver connection string\n"
+		"\t-h\tPrint column headings on first line\n"
+		"\t-v\tPrint the program's version and copyright string\n"
+		"\tstmt\tA valid SELECT statement\n\n"
+		"DRVC can either specify a registered DSN, as in:\n"
+		"\t\"DSN=registered_dsn_name;uid=myusername;pwd=mypassword\"\n"
+		"or directly a driver, as in:\n"
+		"\t\"Driver={Microsoft Access Driver(*.mdb)};DBQ=C:\\temp\\myfile.mdb\"\n\n"
+		, fname
 	);
 	exit(1);
 }
@@ -95,15 +104,17 @@ main(int argc, char *argv[])
 	SQLSMALLINT	numcol, i;
 	char		*field_sep = "\t";
 	char		*rec_sep = "\n";
-	UCHAR		*uid = "", *auth = "";
 	SQLHENV         henv = SQL_NULL_HENV;
 	SQLHDBC         hdbc1 = SQL_NULL_HDBC;
 	SQLHSTMT        hstmt1 = SQL_NULL_HSTMT;
 	SQLHDESC        hdesc = NULL;
 	char		c;
 
-	while ((c = getopt(argc, argv, "R:F:u:a:h")) != EOF)
+	while ((c = getopt(argc, argv, "vR:F:h")) != EOF)
 		switch (c) {
+		case 'v':
+			version();
+			exit(0);
 		case 'F':
 			if (!optarg)
 				usage(argv[0]);
@@ -113,16 +124,6 @@ main(int argc, char *argv[])
 			if (!optarg)
 				usage(argv[0]);
 			rec_sep = strdup(optarg);
-			break;
-		case 'u':
-			if (!optarg)
-				usage(argv[0]);
-			uid = strdup(optarg);
-			break;
-		case 'a':
-			if (!optarg)
-				usage(argv[0]);
-			auth = strdup(optarg);
 			break;
 		case 'h':
 			headings = 1;
