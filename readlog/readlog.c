@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.10 2002-07-10 12:39:13 dds Exp $
+ * $Id: readlog.c,v 1.11 2004-11-19 10:41:13 dds Exp $
  *
  */
 
@@ -41,12 +41,13 @@ static int o_ascii = 0;
 static int o_byte = 0;
 static int o_dword = 0;
 static int o_newline = 0;
+static int o_recno = 0;
 
 static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.10 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.11 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -59,11 +60,12 @@ usage(char *fname)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: %s [-t fmt] [-v server] [-riuwsycahn] [source ...]\n"
+		"usage: %s [-t fmt] [-v srv] [-riuwsycabdn] [source ...]\n"
 		"\t-t fmt\tTime format string (strftime)\n"
-		"\t-v server\tServer name\n"
+		"\t-v srv\tServer name\n"
 		"\t-r\tPrint entries in reverse order\n"
 		"\t-i\tOutput decimal event id\n"
+		"\t-N\tOutput decimal record number\n"
 		"\t-u\tDo not print user information\n"
 		"\t-w\tDo not print workstation name\n"
 		"\t-s\tDo not print event source\n"
@@ -73,8 +75,8 @@ usage(char *fname)
 		"\t-b\tOutput event-specific data as hex bytes\n"
 		"\t-d\tOutput event-specific data as hex doublewords\n"
 		"\t-n\tFormat event using newline separators\n"
-		"\t\tDefault source is System,\n"
-		"\t\tsource can be System, Application, Security or a custom name\n"
+		"\tDefault source is System;\n"
+		"\tsource can be System, Application, Security or a custom name.\n"
 		, fname
 	);
 	exit(1);
@@ -89,10 +91,10 @@ main(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "t:v:riucsyabdn")) != EOF)
+	while ((c = getopt(argc, argv, "t:v:riucsyabdnN")) != EOF)
 		switch (c) {
 		case 't':
-			if (!optarg || optarg[1])
+			if (!optarg)
 				usage(argv[0]);
 			time_fmt = optarg;
 			break;
@@ -112,6 +114,7 @@ main(int argc, char *argv[])
 		case 'd': o_dword = 1; break;
 		case 'n': o_newline = 1; break;
 		case 'i': o_id = 1; break;
+		case 'N': o_recno = 1; break;
 		case '?':
 			usage(argv[0]);
 		}
@@ -339,6 +342,8 @@ print_msg(EVENTLOGRECORD *pelr, char *source)
 		wperror("EventMessageFile", ret);
 		RegCloseKey(rh);
 	}
+	if (o_recno)
+		printf("%d: ", pelr->RecordNumber);
 	/* Event source */
 	if (o_source)
 		printf("%s: ", (LPSTR) ((LPBYTE) pelr + sizeof(EVENTLOGRECORD)));
