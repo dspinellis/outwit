@@ -1,7 +1,7 @@
 /*
  * Copy/Paste the Windows Clipboard
  *
- * (C) Copyright 1994-1999 Diomidis Spinellis
+ * (C) Copyright 1994-2001 Diomidis Spinellis
  * 
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.9 2000-07-07 11:02:48 dds Exp $
+ * $Id: winclip.c,v 1.10 2001-03-08 11:33:11 dds Exp $
  *
  */
 
@@ -50,8 +50,8 @@ void
 usage(void)
 {
 	fprintf(stderr, 
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.9 $\n"
-		"(C) Copyright 1994, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.10 $\n"
+		"(C) Copyright 1994-2001 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -63,7 +63,7 @@ usage(void)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: winclip [-w] -c|-p\n");
+		"usage: winclip [-w] -c|-p [filename]\n");
 	exit(1);
 }
 
@@ -71,7 +71,8 @@ usage(void)
 #define CHUNK 1024
 
 int getopt(int argc, char *argv[], char *optstring);
-
+extern char	*optarg;	/* Global argument pointer. */
+extern int	optind;		/* Global argv index. */
 
 main(int argc, char *argv[])
 {
@@ -83,6 +84,8 @@ main(int argc, char *argv[])
 	enum {O_NONE, O_COPY, O_PASTE} operation = O_NONE;
 	unsigned int textfmt = CF_OEMTEXT;
 	int c;
+	FILE *iofile;		/* File to use for I/O */
+	char *fname;		/* and its file name */
 
 	while ((c = getopt(argc, argv, "wcp")) != EOF)
 		switch (c) {
@@ -102,6 +105,8 @@ main(int argc, char *argv[])
 		case '?':
 			usage();
 		}
+	if (argc - optind > 1)
+		usage();
 
 	switch (operation) {
 	case O_PASTE:
@@ -110,12 +115,21 @@ main(int argc, char *argv[])
 		 */
 		if (!OpenClipboard(NULL))
 			error("Unable to open clipboard");
+		if (argc - optind == 1) {
+			if ((iofile = fopen(fname = argv[optind], "w")) == NULL) {
+				perror(argv[optind]);
+				return (1);
+			}
+		} else {
+			iofile = stdout;
+			fname = "standard output";
+		}
 		if (IsClipboardFormatAvailable(textfmt)) {
 			/* Clipboard contains OEM text; copy it */
 			hglb = GetClipboardData(textfmt);
 			if (hglb != NULL) { 
-				setmode(1, O_BINARY);
-				printf("%s", hglb);
+				setmode(fileno(iofile), O_BINARY);
+				fprintf(iofile, "%s", hglb);
 			}
 			CloseClipboard(); 
 			return (0);
@@ -129,7 +143,7 @@ main(int argc, char *argv[])
 				nfiles = DragQueryFile(hglb, 0xFFFFFFFF, NULL, 0);
 				for (i = 0; i < nfiles; i++) {
 					DragQueryFile(hglb, i, fname, sizeof(fname));
-					printf("%s\n", fname);
+					fprintf(iofile, "%s\n", fname);
 				}
 			}
 			CloseClipboard(); 
@@ -147,8 +161,8 @@ main(int argc, char *argv[])
 
 				if (!GetObject(hglb, sizeof(BITMAP), &bmp))
 					error("Unable to get bitmap dimensions");
-				_setmode(_fileno(stdout), _O_BINARY );
-				printf("P6\n%d %d\n255\n", bmp.bmWidth, bmp.bmHeight);
+				setmode(fileno(iofile), O_BINARY );
+				fprintf(iofile, "P6\n%d %d\n255\n", bmp.bmWidth, bmp.bmHeight);
 				if ((hdc = CreateCompatibleDC(NULL)) == NULL)
 					error("Unable to create a compatible device context");
 				if ((oldobj = SelectObject(hdc, hglb)) == NULL)
@@ -156,9 +170,9 @@ main(int argc, char *argv[])
 				for (y = 0; y < bmp.bmHeight; y++)
 					for (x = 0; x < bmp.bmWidth; x++) {
 						cref = GetPixel(hdc, x, y);
-						putchar(GetRValue(cref));
-						putchar(GetGValue(cref));
-						putchar(GetBValue(cref));
+						putc(GetRValue(cref), iofile);
+						putc(GetGValue(cref), iofile);
+						putc(GetBValue(cref), iofile);
 					}
 				SelectObject(hdc, oldobj);
 				DeleteDC(hdc);
@@ -168,11 +182,24 @@ main(int argc, char *argv[])
 			CloseClipboard(); 
 			error("The clipboard does not contain text or files");
 		}
+		if (ferror(iofile)) {
+			perror(fname);
+			return (1);
+		}
 		break;
 	case O_COPY:
 		/*
 		 * Copy our input to the Windows Clipboard
 		 */
+		if (argc - optind == 1) {
+			if ((iofile = fopen(fname = argv[optind], "b")) == NULL) {
+				perror(argv[optind]);
+				return (1);
+			}
+		} else {
+			iofile = stdin;
+			fname = "standard input";
+		}
 		if (!OpenClipboard(NULL))
 			error("Unable to open the clipboard");
 		if (!EmptyClipboard()) {
@@ -181,7 +208,7 @@ main(int argc, char *argv[])
 		}
 
 		// Read stdin into buffer
-		setmode(0, O_BINARY);
+		setmode(fileno(iofile), O_BINARY);
 		bp = b = malloc(remsiz = bsiz = CHUNK);
 		if (b == NULL) {
 			CloseClipboard(); 
@@ -189,7 +216,7 @@ main(int argc, char *argv[])
 			return (1);
 		}
 		total = 0;
-		while ((n = read(0, bp, remsiz)) > 0) {
+		while ((n = fread(bp, 1, remsiz, iofile)) > 0) {
 			remsiz -= n;
 			total += n;
 			if (remsiz < CHUNK) {
@@ -212,6 +239,10 @@ main(int argc, char *argv[])
 		((char *)hglb)[total] = '\0';
 		SetClipboardData(textfmt, hglb); 
 		CloseClipboard(); 
+		if (ferror(iofile)) {
+			perror(fname);
+			return (1);
+		}
 		break;
 	case O_NONE:
 		usage();

@@ -11,7 +11,7 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.2 2000-07-08 11:03:42 dds Exp $
+.\" $Id: winclip.1,v 1.3 2001-03-08 11:33:11 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
@@ -19,17 +19,20 @@ winclip \- console Windows clipboard interface
 \fBwinclip\fP 
 [\fB\-w\fP]
 \fB-c\fP|\fB-p\fP
+[\fIfile\fP]
 .SH DESCRIPTION
 \fIWinclip\fP provides access to the Windows clipboard from a console
 or MS-DOS window.
 Its operation depends on its mandatory argument.
 When executed with the -p (paste) argument it pastes
-the Windows clipboard to its standard output.
+the Windows clipboard to its standard output or to the \fIfile\fP
+optionally specified in the command line.
 The \fIwinclip\fP output may be redirected
 to a file (using the shell > syntax) or to another process
 (using the shell | pipeline syntax).
 When \fIwinclip\fP is executed with the -c (copy) argument
-it copies its standard input to the Windows clipboard.
+it copies its standard input (or the \fIfile\fP
+optionally specified in the command line) to the Windows clipboard.
 Again, \fIwinclip\fP input may be redirected to be read from a file
 (using the < shell syntax), or from another process of a pipeline.
 .LP
@@ -40,7 +43,7 @@ When tranfering text,
 it will automatically perform the appropriate Windows to console
 character code (OEM) set translations.
 \fIWinclip\fP is an Intel architecture Win32 program that only works under 
-the Intel processor versions of Windows NT, Windows 95, and Windows 98.
+the Intel processor versions of Windows NT, 95, 98, Me, 2000.
 .SH OPTIONS
 .IP "\fB\-c\fP"
 Copy the standard input to the Windows clipboard.
@@ -55,7 +58,7 @@ dir /b | winclip -c
 .br
 Copies the directory list to the Windows clipboard.
 .LP
-winclip -p >file.txt
+winclip -p file.txt
 .br
 Saves the Windows clipboard to file.txt.
 .LP
@@ -69,7 +72,7 @@ In \fIUSENIX 2000 Technical Conference Proceedings\fP, San Diego, CA, USA,
 June 2000, USENIX Association.
 
 .SH AUTHOR
-(C) Copyright 1994-2000 Diomidis Spinellis.  All rights reserved.
+(C) Copyright 1994-2001 Diomidis Spinellis.  All rights reserved.
 .LP
 Permission to use, copy, and distribute this software and its
 documentation for any purpose and without fee is hereby granted,
