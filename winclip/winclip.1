@@ -11,12 +11,13 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.1 2000-07-07 13:36:09 dds Exp $
+.\" $Id: winclip.1,v 1.2 2000-07-08 11:03:42 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
 .SH SYNOPSIS
 \fBwinclip\fP 
+[\fB\-w\fP]
 \fB-c\fP|\fB-p\fP
 .SH DESCRIPTION
 \fIWinclip\fP provides access to the Windows clipboard from a console
@@ -37,9 +38,18 @@ that have been copied in the Windows explorer, and bitmaps which
 are pasted in binary \fIppm\fP format.
 When tranfering text,
 it will automatically perform the appropriate Windows to console
-character code set translations.
+character code (OEM) set translations.
 \fIWinclip\fP is an Intel architecture Win32 program that only works under 
 the Intel processor versions of Windows NT, Windows 95, and Windows 98.
+.SH OPTIONS
+.IP "\fB\-c\fP"
+Copy the standard input to the Windows clipboard.
+.IP "\fB\-p\fP"
+Copy the Windows clipboard contents to the standard output.
+.IP "\fB\-w\fP"
+Transfer text in the Windows-native format (CF_TEXT) instead of the
+(default) DOS-native format (CF_OEMTEXT).
+This will affect how non-ASCII characters will be encoded.
 .SH EXAMPLE
 dir /b | winclip -c
 .br
@@ -52,6 +62,11 @@ Saves the Windows clipboard to file.txt.
 winclip -p | perl -pe "tr/[A-Z]/[a-z]/" | winclip -c
 .br
 Converts the contents of the Windows clipboard to lowercase.
+
+.SH "SEE ALSO"
+D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
+In \fIUSENIX 2000 Technical Conference Proceedings\fP, San Diego, CA, USA,
+June 2000, USENIX Association.
 
 .SH AUTHOR
 (C) Copyright 1994-2000 Diomidis Spinellis.  All rights reserved.
