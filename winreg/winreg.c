@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.2 2000-04-01 12:09:58 dds Exp $
+ * $Id: winreg.c,v 1.3 2000-04-01 12:10:59 dds Exp $
  *
  */
 
@@ -321,7 +321,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"Windows registry text-based access.  $Release$\n"
+		"Windows registry text-based access.  $Revision: 1.3 $\n"
 		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
