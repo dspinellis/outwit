@@ -1,28 +1,28 @@
 .TH READLOG 1 "11 July 2002"
 .\" (C) Copyright 2002 Diomidis Spinellis.  All rights reserved.
-.\" 
+.\"
 .\" Permission to use, copy, and distribute this software and its
 .\" documentation for any purpose and without fee for noncommercial use
 .\" is hereby granted, provided that the above copyright notice appear in
 .\" all copies and that both that copyright notice and this permission notice
 .\" appear in supporting documentation.
-.\" 
+.\"
 .\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: readlog.1,v 1.1 2004-11-19 14:48:00 dds Exp $
+.\" $Id: readlog.1,v 1.2 2004-11-19 14:48:15 dds Exp $
 .\"
 .SH NAME
 readlog \- text-based access to the Windows event log
 .SH SYNOPSIS
-\fBreadlog\fP 
+\fBreadlog\fP
 [\fB\-t\fP \fIfmt\fP]
 [\fB\-v\fP \fIsrv\fP]
 [\fB\-riuwsycabdn\fP]
 [\fIsource ...\fP]
 .SH DESCRIPTION
-\fIReadlog\fP 
+\fIReadlog\fP
 provides text-based access to the Windows event log.
 It can thus be used to textually process the data that is normaly
 seen through the Windows \fIevent viewer\fP program.
@@ -48,18 +48,18 @@ Without any parameters \fIreadlog\fP will print the contents of the
 Windows systems typically also contain \fIApplication\fP and \fISecurity\fP
 logs.
 In addition, applications can install other custom log files.
-You can see the files available on your system in the 
+You can see the files available on your system in the
 registry under the
 HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Eventlog
 branch.
-One or more event log files can be specified as arguments to 
+One or more event log files can be specified as arguments to
 \fIreadlog\fP.
 .SH OPTIONS
 .IP "\fB\-f\fP \fBfmt\fP"
 Specify the format to display the event generation time using the
 \fIstrftime(3)\fP escape sequences.
 .IP "\fB\-v\fP \fBsrc\fP"
-Specify the server name from which to obtain the event log as a 
+Specify the server name from which to obtain the event log as a
 UNC name.
 .IP "\fB\-r\fP"
 Print entries in reverse chronological order starting from the latest
@@ -93,7 +93,7 @@ readlog | grep "The Event log service was started" | wc -l
 .br
 can be used to count the number of system boots registered in the log.
 .LP
-readlog Application | 
+readlog Application |
 awk -F: "/Outbound: Information: Fax Sent/{print $12}" |
 sort |
 uniq -c |
