@@ -1,0 +1,88 @@
+.TH ODBC 1 "25 January 2000"
+.\" (C) Copyright 1999, 2000 Diomidis Spinellis.  All rights reserved.
+.\" 
+.\" Permission to use, copy, and distribute this software and its
+.\" documentation for any purpose and without fee for noncommercial use
+.\" is hereby granted, provided that the above copyright notice appear in
+.\" all copies and that both that copyright notice and this permission notice
+.\" appear in supporting documentation.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" $Id: odbc.1,v 1.1 2003-12-02 08:34:22 dds Exp $
+.\"
+.SH NAME
+odbc \- provide ODBC-based database access
+.SH SYNOPSIS
+\fBodbc\fP 
+[\fB\-R\fP \fIRS\fP]
+[\fB\-F\fP \fIFS\fP]
+[\fB\-u\fP \fIUID\fP]
+[\fB\-a\fP \fIAS\fP]
+[\fB\-h\fP]
+\fIDSN stmt\fP
+.SH DESCRIPTION
+\fIOdbc\fP 
+prints the results of an \fISQL select\fP command
+run on any database for which an appropriate data source has been defined.
+Two arguments must always be specified as part of the \fIodbc\fP invocation:
+the name of the data source driver, and an SQL select statement.
+Data source drivers are typically configured through the
+control panel (ODBC category).
+All data types are currently output as text according to the default
+driver-supplied data conversions.
+By default fields are separated by  the tab character and records by a
+newline.
+To access the database an empty user identifier and authorization string
+are used.
+The select statement specified must conform to the syntax and conventions used
+by the database being accessed.
+.SH OPTIONS
+.IP "\fB\-R\fP \fBRS\fP"
+Specify the record separator used to delimit records on output.
+The default record separator is a newline.
+.IP "\fB\-F\fP \fBFS\fP"
+Specify the field separator used to delimit fields on output.
+The default field separator is a tab.
+.IP "\fB\-u\fP \fBUID\fP"
+Specify the user identifier used to access the database.
+An empty user identifier is used if none is specified.
+.IP "\fB\-s\fP \fBAS\fP"
+Specify the authorization string (often the password)
+used to access the database.
+An empty authorization string is used if none is specified.
+.IP "\fB\-h\fP"
+The first line of the output will contain the name of each database field.
+
+.SH EXAMPLE
+mail `odbc userDB "select email from users"` <message
+.br
+Extracts the email address from all records from the table \fIusers\fP
+which is part of the database \fIuserDB\fP and sends them the file
+\fImessage\fP by email.
+.SH "SEE ALSO"
+D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
+In \fIUSENIX 2000 Technical Conference Proceedings\fP, San Diego, CA, USA,
+June 2000, USENIX Association.
+.br
+International Organization for Standardization, Geneva, Switzerland.
+\fIInformation technology \(em Database languages \(em SQL \(em Part 3:
+Call-Level Interface (SQL/CLI)\fP, 1995.
+ISO/IEC 9075-3:1995.
+.SH AUTHOR
+(C) Copyright 1999, 2000 Diomidis Spinellis.  All rights reserved.
+.LP
+Permission to use, copy, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation.
+.LP
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.SH BUGS
+The presentation of results in textual format depends on the implementation of
+the ODBC driver.
