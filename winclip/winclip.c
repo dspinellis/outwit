@@ -1,7 +1,7 @@
 /*
  * Copy/Paste the Windows Clipboard
  *
- * (C) Copyright 1994-2002 Diomidis Spinellis
+ * (C) Copyright 1994-2004 Diomidis Spinellis
  * 
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.15 2003-09-09 18:46:08 dds Exp $
+ * $Id: winclip.c,v 1.16 2004-02-27 17:06:56 dds Exp $
  *
  */
 
@@ -23,6 +23,16 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <io.h>
+#include <wchar.h>
+
+/*
+ * Flags affecting Unicode output
+ */
+/* Print byte order mark */
+static int bom = 0;
+/* output UTF instead of native wide characters */
+static int multibyte = 0;
+
 
 static void
 error(char *s)
@@ -47,11 +57,39 @@ error(char *s)
 }
 
 void
+unicode_fputs(const wchar_t *str, FILE *iofile)
+{
+	setmode(fileno(iofile), O_BINARY);
+
+	if (multibyte) {
+		int wlen = wcslen(str);
+		int blen = (wlen + 1) * 6;
+		char *mbs = malloc(blen);
+		if (mbs == NULL) {
+			CloseClipboard();
+			fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", blen);
+			exit(1);
+		}
+		if (WideCharToMultiByte(CP_UTF8, 0, str, wlen, mbs, blen, NULL, NULL) == 0) {
+			CloseClipboard(); 
+			error("Error converting wide characters into a multi byte sequence");
+		}
+		if (bom)
+			fprintf(iofile, "\xef\xbb\xbf");
+		fprintf(iofile, "%s", mbs);
+	} else {
+		if (bom)
+			fprintf(iofile, "\xff\xfe");
+		fwprintf(iofile, L"%s\n", str);
+	}
+}
+
+void
 usage(void)
 {
 	fprintf(stderr, 
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.15 $\n"
-		"(C) Copyright 1994-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.16 $\n"
+		"(C) Copyright 1994-2004 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -63,7 +101,7 @@ usage(void)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: winclip [-w|u] -c|-p [filename]\n");
+		"usage: winclip [-w|u|m] [-b] -c|-p [filename]\n");
 	exit(1);
 }
 
@@ -86,9 +124,19 @@ main(int argc, char *argv[])
 	int c;
 	FILE *iofile;		/* File to use for I/O */
 	char *fname;		/* and its file name */
+	int big_endian;		/* True if big-endian BOM */
 
-	while ((c = getopt(argc, argv, "uwcp")) != EOF)
+	while ((c = getopt(argc, argv, "uwcpmb")) != EOF)
 		switch (c) {
+		case 'b':
+			bom = 1;
+			break;
+		case 'm':
+			if (textfmt != CF_OEMTEXT)
+				usage();
+			textfmt = CF_UNICODETEXT;
+			multibyte = 1;
+			break;
 		case 'u':
 			if (textfmt != CF_OEMTEXT)
 				usage();
@@ -137,7 +185,7 @@ main(int argc, char *argv[])
 			if (hglb != NULL) { 
 				setmode(fileno(iofile), O_BINARY);
 				if (textfmt == CF_UNICODETEXT)
-					fwprintf(iofile, L"%s", hglb);
+					unicode_fputs(hglb, iofile);
 				else
 					fprintf(iofile, "%s", hglb);
 			}
@@ -159,8 +207,7 @@ main(int argc, char *argv[])
 						break;
 					case CF_UNICODETEXT:
 						DragQueryFileW(hglb, i, (LPWSTR)fname, sizeof(fname));
-						setmode(fileno(iofile), O_BINARY);
-						fwprintf(iofile, L"%s\n", fname);
+						unicode_fputs((wchar_t *)fname, iofile);
 						break;
 					case CF_OEMTEXT:
 						DragQueryFileA(hglb, i, fname, sizeof(fname));
@@ -252,6 +299,53 @@ main(int argc, char *argv[])
 				}
 				remsiz = bsiz - total;
 				bp = b + total;
+			}
+		}
+		if (bom) {
+			if (memcmp(b, "\xef\xbb\xbf", 3) == 0) {
+				/* UTF-8 */
+				textfmt = CF_UNICODETEXT;
+				multibyte = 1;
+				big_endian = 0;
+			} else if (memcmp(b, "\xff\xfe", 2) == 0) {
+				/* UTF-16 little endian (native) */
+				fprintf(stderr, "Detected UCS16le\n");
+				textfmt = CF_UNICODETEXT;
+				multibyte = 0;
+				big_endian = 0;
+			} else if (memcmp(b, "\xfe\xff", 2) == 0) {
+				/* UTF-16 big endian */
+				textfmt = CF_UNICODETEXT;
+				multibyte = 0;
+				big_endian = 1;
+			}
+		}
+		if (textfmt == CF_UNICODETEXT && multibyte) {
+			int b2siz = (total + 1) * 2;
+			char *b2 = malloc(b2siz);
+			int ret;
+
+			if (b2 == NULL) {
+				fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", b2siz);
+				CloseClipboard(); 
+				return (1);
+			}
+			if ((ret = MultiByteToWideChar(CP_UTF8, 0, b, total, (LPWSTR)b2, b2siz)) == 0) {
+				CloseClipboard(); 
+				error("Error converting a multi byte sequence into wide characters");
+			}
+			total = ret * 2;
+			b = b2;
+		}
+		/* Convert big to little endian */
+		if (big_endian) {
+			char tmp;
+			int i;
+
+			for (i = 0; i < total; i++) {
+				tmp = b[i];
+				b[i] = b[i + 1];
+				b[i + 1] = tmp;
 			}
 		}
 		hglb = GlobalAlloc(GMEM_DDESHARE, total + 1);

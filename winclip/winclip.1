@@ -1,5 +1,5 @@
-.TH WINCLIP 1 "3 January 2002"
-.\" (C) Copyright 1998-2002 Diomidis Spinellis.  All rights reserved.
+.TH WINCLIP 1 "27 February 2004"
+.\" (C) Copyright 1998-2004 Diomidis Spinellis.  All rights reserved.
 .\" 
 .\" Permission to use, copy, and distribute this software and its
 .\" documentation for any purpose and without fee is hereby granted,
@@ -11,13 +11,14 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.6 2002-01-03 13:57:15 dds Exp $
+.\" $Id: winclip.1,v 1.7 2004-02-27 17:06:56 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
 .SH SYNOPSIS
 \fBwinclip\fP 
-[\fB\-w\fP|\fB\-u\fP]
+[\fB\-w\fP|\fB\-u\fP\fB\-m\fP]
+[\fB\-b\fP]
 \fB-c\fP|\fB-p\fP
 [\fIfile\fP]
 .SH DESCRIPTION
@@ -60,9 +61,23 @@ for clipboard text and copied file icons.
 Transfer text in Unicode format (CF_UNICODETEXT) instead of the
 (default) DOS-native format (CF_OEMTEXT).
 The Unicode encoding is the same as the one used by the Windows clipboard:
-apparently UCS-16 in little-endian byte order.
+apparently UCS-16 in little-endian byte order (UTF-16LE).
 Setting this option will affect how non-ASCII characters will be encoded
 for clipboard text and copied file icons.
+.IP "\fB\-m\fP"
+Transfer text in Unicode format (CF_UNICODETEXT) instead of the
+(default) DOS-native format (CF_OEMTEXT).
+The Unicode encoding is UTF-8.
+Setting this option will affect how non-ASCII characters will be encoded
+for clipboard text and copied file icons.
+.IP "\fB\-b\fP"
+When outputing Unicode text,
+prepend a byte order mark (BOM) at the beginning.
+This may make it easier for outher tools to recognize \fIwinclip\fP's
+output format.
+When reading data for the clipboard, automatically detect
+Unicode data, and set the encoding and endianess, if a byte-order-mark is
+detected.
 .SH EXAMPLE
 dir /b | winclip -c
 .br
@@ -81,7 +96,7 @@ In \fIUSENIX 2000 Technical Conference Proceedings\fP, San Diego, CA, USA,
 June 2000, USENIX Association.
 
 .SH AUTHOR
-(C) Copyright 1994-2002 Diomidis Spinellis.  All rights reserved.
+(C) Copyright 1994-2004 Diomidis Spinellis.  All rights reserved.
 .LP
 Permission to use, copy, and distribute this software and its
 documentation for any purpose and without fee is hereby granted,
