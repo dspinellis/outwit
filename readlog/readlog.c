@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.2 2002-07-10 09:46:41 dds Exp $
+ * $Id: readlog.c,v 1.3 2002-07-10 10:20:37 dds Exp $
  *
  */
 
@@ -22,6 +22,7 @@
 #include <windows.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 /*
@@ -43,7 +44,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.2 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.3 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -131,8 +132,6 @@ evtype(int type)
 	case EVENTLOG_AUDIT_FAILURE: return "failure";
 	}
 }
-
-#define BUFFER_SIZE 8192
 
 static void
 wperror(char *s, LONG err)
@@ -289,10 +288,11 @@ print_log(void)
 {
 	HANDLE          h;
 	EVENTLOGRECORD *pevlr;
-	BYTE            bBuffer[BUFFER_SIZE];
+	BYTE            *bBuffer;
 	DWORD           dwRead,
 	                dwNeeded,
 	                cRecords,
+			dwSize,
 	                dwThisRecord = 0;
 
 	h = OpenEventLog(server, source);
@@ -301,16 +301,15 @@ print_log(void)
 		exit(1);
 	}
 
-	pevlr = (EVENTLOGRECORD *)&bBuffer;
-	// Opening the event log positions the file pointer for this 
-	// handle at the beginning of the log. Read the records 
-	// sequentially until there are no more. 
+	bBuffer = malloc(dwSize = 8192);
+again:
+	pevlr = (EVENTLOGRECORD *)bBuffer;
 	while (ReadEventLog(h,	// event log handle 
 			    o_direction |	// reads forward 
 			    EVENTLOG_SEQUENTIAL_READ,	// sequential read 
 			    0,	// ignored for sequential reads 
 			    pevlr,	// pointer to buffer 
-			    BUFFER_SIZE,	// size of buffer 
+			    dwSize,	// size of buffer 
 			    &dwRead,	// number of bytes read 
 			    &dwNeeded))	// bytes in next record 
 	{
@@ -321,7 +320,20 @@ print_log(void)
 			    (EVENTLOGRECORD *) ((LPBYTE) pevlr +
 						pevlr->Length);
 		}
-		pevlr = (EVENTLOGRECORD *)&bBuffer;
+		pevlr = (EVENTLOGRECORD *)bBuffer;
+	}
+	switch (GetLastError()) {
+	case ERROR_INSUFFICIENT_BUFFER:
+		bBuffer = realloc(bBuffer, dwSize = dwNeeded);
+		if (bBuffer == NULL) {
+			fprintf(stderr, "Out of memory\n");
+			exit(1);
+		}
+		goto again;
+	case ERROR_HANDLE_EOF:
+		break;
+	default:
+		wperror("ReadEventLog", GetLastError());
 	}
 	CloseEventLog(h);
 }
