@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.2 1999-06-02 07:03:53 dds Exp $
+ * $Id: winclip.c,v 1.3 1999-06-09 09:57:10 dds Exp $
  *
  */
 
@@ -53,15 +53,14 @@ error(char *s)
 main(int argc, char *argv[])
 {
 	HANDLE hglb;
-	LPTSTR lptstr;
 	char *b, *bp;		/* Buffer, pointer to buffer insertion point */
 	size_t bsiz, remsiz;	/* Buffer, size, remaining size */
 	size_t total;		/* Total read */
 	int n;
 
 	if (argc > 2 || (argc == 2 && *argv[1] == '-')) {
-		fprintf(stderr, "$Id: winclip.c,v 1.2 1999-06-02 07:03:53 dds Exp $\n"
-				"Copyright 1998 Diomidis Spinellis.  "
+		fprintf(stderr, "$Id: winclip.c,v 1.3 1999-06-09 09:57:10 dds Exp $\n"
+				"Copyright 1998, 1999 Diomidis Spinellis.  "
 				"May be freely copied without modification.\n\n"
 				"usage: winclip [filename]\n");
 		return (1);
@@ -83,21 +82,34 @@ main(int argc, char *argv[])
 		 */
 		if (!OpenClipboard(NULL))
 			error("Unable to open clipboard");
-		if (!IsClipboardFormatAvailable(CF_OEMTEXT)) {
+		if (IsClipboardFormatAvailable(CF_OEMTEXT)) {
+			/* Clipboard contains OEM text; copy it */
+			hglb = GetClipboardData(CF_OEMTEXT);
+			if (hglb != NULL) { 
+				setmode(1, O_BINARY);
+				printf("%s", hglb);
+			}
+			CloseClipboard(); 
+			return (0);
+		} else if (IsClipboardFormatAvailable(CF_HDROP)) {
+			/* Clipboard contains file names; print them */
+			hglb = GetClipboardData(CF_HDROP);
+			if (hglb != NULL) { 
+				int nfiles, i;
+				char fname[4096];
+
+				nfiles = DragQueryFile(hglb, 0xFFFFFFFF, NULL, 0);
+				for (i = 0; i < nfiles; i++) {
+					DragQueryFile(hglb, i, fname, sizeof(fname));
+					printf("%s\n", fname);
+				}
+			}
+			CloseClipboard(); 
+			return (0);
+		} else {
 			CloseClipboard(); 
 			error("The clipboard does not contain text");
 		}
-		hglb = GetClipboardData(CF_OEMTEXT); 
-		if (hglb != NULL) { 
-			lptstr = GlobalLock(hglb); 
-			if (lptstr != NULL) {
-				setmode(1, O_BINARY);
-				printf("%s", lptstr);
-			}
-			GlobalUnlock(hglb); 
-		}
-		CloseClipboard(); 
-		return (0);
 	} else if (isatty(1) || (argc == 2)) {
 		/*
 		 * We are the last process in the pipeline, or
@@ -140,10 +152,8 @@ main(int argc, char *argv[])
 			CloseClipboard(); 
 			return (1);
 		}
-		lptstr = GlobalLock(hglb);
-		memcpy(lptstr, b, total);
-		lptstr[total] = '\0';
-		GlobalUnlock(hglb); 
+		memcpy(hglb, b, total);
+		((char *)hglb)[total] = '\0';
 		SetClipboardData(CF_OEMTEXT, hglb); 
 		CloseClipboard(); 
 		return (0);
