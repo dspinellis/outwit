@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.17 2004-02-27 17:07:41 dds Exp $
+ * $Id: winclip.c,v 1.18 2004-02-27 17:10:34 dds Exp $
  *
  */
 
@@ -88,7 +88,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.17 $\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.18 $\n"
 		"(C) Copyright 1994-2004 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -309,7 +309,6 @@ main(int argc, char *argv[])
 				big_endian = 0;
 			} else if (memcmp(b, "\xff\xfe", 2) == 0) {
 				/* UTF-16 little endian (native) */
-				fprintf(stderr, "Detected UCS16le\n");
 				textfmt = CF_UNICODETEXT;
 				multibyte = 0;
 				big_endian = 0;
