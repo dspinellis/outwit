@@ -1,8 +1,8 @@
 /*
  *
- * Windows registry text-based access
+ * winreg - Windows registry text-based access
  *
- * (C) Copyright 1994, 2000 Diomidis Spinellis
+ * (C) Copyright 1999, 2000 Diomidis Spinellis
  * 
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.3 2000-04-01 12:10:59 dds Exp $
+ * $Id: winreg.c,v 1.4 2000-04-01 12:14:39 dds Exp $
  *
  */
 
@@ -321,7 +321,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"Windows registry text-based access.  $Revision: 1.3 $\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.4 $\n"
 		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
