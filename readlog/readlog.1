@@ -1,0 +1,129 @@
+.TH READLOG 1 "11 July 2002"
+.\" (C) Copyright 2002 Diomidis Spinellis.  All rights reserved.
+.\" 
+.\" Permission to use, copy, and distribute this software and its
+.\" documentation for any purpose and without fee for noncommercial use
+.\" is hereby granted, provided that the above copyright notice appear in
+.\" all copies and that both that copyright notice and this permission notice
+.\" appear in supporting documentation.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" $Id: readlog.1,v 1.1 2004-11-19 14:48:00 dds Exp $
+.\"
+.SH NAME
+readlog \- text-based access to the Windows event log
+.SH SYNOPSIS
+\fBreadlog\fP 
+[\fB\-t\fP \fIfmt\fP]
+[\fB\-v\fP \fIsrv\fP]
+[\fB\-riuwsycabdn\fP]
+[\fIsource ...\fP]
+.SH DESCRIPTION
+\fIReadlog\fP 
+provides text-based access to the Windows event log.
+It can thus be used to textually process the data that is normaly
+seen through the Windows \fIevent viewer\fP program.
+Running \fIreadlog\fP without any options will generate a listing
+of the \fISystem\fP event log in a format remininscent of the Unix
+\fIsyslogd\fP log files such as the following:
+.br
+Apr 20 08:35:28 SEAGULL Srv: -: Warning: The C: disk is at or near capacity.  Yo
+u may need to delete some files.
+.br
+By default
+each entry contains the time, the computer name, the application name,
+the log message category (where available), the log message type
+(error, warning, information, audit success, or audit failure),
+and the the error message.
+Under Windows the event log does not contain the actual messages, but
+pointers to files that contain pre-compiled message strings.
+Failure to obtain such a message string will result in an error message,
+but \fIreadlog\fP will continue its operation displaying the message code.
+.LP
+Without any parameters \fIreadlog\fP will print the contents of the
+\fISystem\fP event log.
+Windows systems typically also contain \fIApplication\fP and \fISecurity\fP
+logs.
+In addition, applications can install other custom log files.
+You can see the files available on your system in the 
+registry under the
+HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services\\Eventlog
+branch.
+One or more event log files can be specified as arguments to 
+\fIreadlog\fP.
+.SH OPTIONS
+.IP "\fB\-f\fP \fBfmt\fP"
+Specify the format to display the event generation time using the
+\fIstrftime(3)\fP escape sequences.
+.IP "\fB\-v\fP \fBsrc\fP"
+Specify the server name from which to obtain the event log as a 
+UNC name.
+.IP "\fB\-r\fP"
+Print entries in reverse chronological order starting from the latest
+entry and going back in time.
+.IP "\fB\-i\fP"
+Output the decimal event id.
+.IP "\fB\-u\fP"
+Do not print user information;
+normally user information is printed using the \fIdomain\\user\fP convention.
+.IP "\fB\-w\fP"
+Do not print the workstation name.
+.IP "\fB\-s\fP"
+Do not print the event source.
+.IP "\fB\-y\fP"
+Do not print the event type.
+.IP "\fB\-c\fP"
+Do not print the event category (most events have no categories registered, so
+you will in many cases just see a single dash).
+.IP "\fB\-a\fP"
+Output event-specific data as ASCII.
+.IP "\fB\-b\fP"
+Output event-specific data as hex bytes.
+.IP "\fB\-d\fP"
+Output event-specific data as hex doublewords.
+.IP "\fB\-n\fP"
+Format event using newline separators;
+normally each event is displayed in a single line.
+
+.SH EXAMPLE
+readlog | grep "The Event log service was started" | wc -l
+.br
+can be used to count the number of system boots registered in the log.
+.LP
+readlog Application | 
+awk -F: "/Outbound: Information: Fax Sent/{print $12}" |
+sort |
+uniq -c |
+sort -rn
+.br
+Create an list of fax recipients ordered by the number of faxes they have
+received.
+.SH "SEE ALSO"
+D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
+In \fIUSENIX 2000 Technical Conference Proceedings\fP, pages 149-158, San Diego, CA, USA,
+June 2000, USENIX Association.
+.br
+Microsoft Corporation.
+\fIMicrosoft Windows NT Server 4.0 Resource Kit\fP.
+Microsoft Press.
+
+.SH AUTHOR
+(C) Copyright 2002 Diomidis Spinellis.  All rights reserved.
+.LP
+Permission to use, copy, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation.
+.LP
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.SH BUGS
+Remote system access has not been tested.
+.LP
+Windows event log messages are sometimes difficult to parse using text-based
+tools.
