@@ -14,7 +14,7 @@
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
  *
- * $Id: docprop.cpp,v 1.4 2000-04-01 12:30:05 dds Exp $
+ * $Id: docprop.cpp,v 1.5 2000-04-01 12:39:18 dds Exp $
  *
  */
 
@@ -292,7 +292,7 @@ usage(char *s)
 	int i;
 
 	fprintf(stderr, 
-		"docprop - print the properties of an OLE structured storage document.  $Revision: 1.4 $\n"
+		"docprop - print the properties of an OLE structured storage document.  $Revision: 1.5 $\n"
 		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -423,6 +423,9 @@ main(int argc, char **argv)
 		fmt = argv[2];
 		optind = 3;
 	}
+
+	if (*argv[optind] == '-')
+		usage(argv[0]);
 
 	for (i = optind; i < argc; i++) {
 		get_props(argv[i]);
