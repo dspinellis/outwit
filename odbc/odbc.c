@@ -2,7 +2,7 @@
  *
  * odbc - select data from relational databases
  *
- * (C) Copyright 1999, 2000 Diomidis Spinellis
+ * (C) Copyright 1999-2003 Diomidis Spinellis
  * 
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: odbc.c,v 1.1 2000-04-01 12:13:57 dds Exp $
+ * $Id: odbc.c,v 1.2 2003-11-14 18:27:44 dds Exp $
  *
  */
 
@@ -45,8 +45,8 @@ void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"odbc - select data from relational databases.  $Revision: 1.1 $\n"
-		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+		"odbc - select data from relational databases.  $Revision: 1.2 $\n"
+		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -68,6 +68,22 @@ usage(char *fname)
 		"\tstmt\tA valid SELECT statement\n\n", fname
 	);
 	exit(1);
+}
+
+/* Report an SQL error, through the status records */
+void
+report_error(SQLHDBC hdbc)
+{
+	SQLSMALLINT	i = 1;
+	SQLCHAR         SqlState[6], Msg[SQL_MAX_MESSAGE_LENGTH];
+	SQLINTEGER      NativeError;
+	SQLSMALLINT     MsgLen;
+	RETCODE         retcode;
+
+	for (i = 1; (retcode = SQLGetDiagRec(SQL_HANDLE_DBC, hdbc, i, SqlState, 
+	    &NativeError, Msg, sizeof(Msg), &MsgLen)) != SQL_NO_DATA; i++)
+		fprintf(stderr, "SQL Error State: %s, Native Error Code: %lX, ODBC Error: %s", 
+			(LPSTR)SqlState, NativeError, (LPSTR)Msg); 
 }
 
 int 
@@ -126,56 +142,64 @@ main(int argc, char *argv[])
 	retcode = SQLSetEnvAttr(henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER) SQL_OV_ODBC3, SQL_IS_INTEGER);
 	retcode = SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc1);
 	retcode = SQLConnect(hdbc1, argv[optind], SQL_NTS, uid, SQL_NTS, auth, SQL_NTS);
+	if ((retcode == SQL_SUCCESS_WITH_INFO) || (retcode == SQL_ERROR))
+		report_error(hdbc1);
+
 	retcode = SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1);
 
 	retcode = SQLExecDirect(hstmt1, (UCHAR *) argv[optind + 1], SQL_NTS);
 
-	retcode = SQLNumResultCols(hstmt1, &numcol);
-
-	coldata = (struct s_coldata *)malloc(numcol * sizeof(struct s_coldata));
-	// Column 0 is the bookmark column
-	for (i = 1; i <= numcol; i++) {
-		retcode = SQLDescribeCol(hstmt1, i, 
-			coldata[i].column_name, 
-			sizeof(coldata[i].column_name),
-			&(coldata[i].column_name_len), 
-			&(coldata[i].data_type), 
-			&(coldata[i].column_size), 
-			&(coldata[i].decimal_digits), 
-			&(coldata[i].nullable));
-		coldata[i].data = (char *)malloc(coldata[i].column_size + 1);
-		retcode = SQLBindCol(hstmt1, i, 
-			SQL_C_CHAR, 
-			coldata[i].data,
-			coldata[i].column_size + 1,
-			&(coldata[i].io_len));
-		if (headings) {
-			fputs(coldata[i].column_name, stdout);
-			if (i < numcol)
-				fputs(field_sep, stdout);
-		}
-	}
-	if (headings)
-		fputs(rec_sep, stdout);
-
-	for (;;) {
-		retcode = SQLFetch(hstmt1);
-		if (retcode == SQL_ERROR || retcode == SQL_SUCCESS_WITH_INFO) {
-			// Show error
-		}
-		if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO) {
-			for (i = 1; i <= numcol; i++) {
-				fputs(coldata[i].data, stdout);
+	if ((retcode == SQL_SUCCESS_WITH_INFO) || (retcode == SQL_ERROR))
+		report_error(hdbc1);
+	
+	if ((retcode == SQL_SUCCESS) || (retcode == SQL_SUCCESS_WITH_INFO)) {
+		retcode = SQLNumResultCols(hstmt1, &numcol);
+	
+		coldata = (struct s_coldata *)malloc((numcol + 1) * sizeof(struct s_coldata));
+		// Column 0 is the bookmark column
+		for (i = 1; i <= numcol; i++) {
+			retcode = SQLDescribeCol(hstmt1, i, 
+				coldata[i].column_name, 
+				sizeof(coldata[i].column_name),
+				&(coldata[i].column_name_len), 
+				&(coldata[i].data_type), 
+				&(coldata[i].column_size), 
+				&(coldata[i].decimal_digits), 
+				&(coldata[i].nullable));
+			coldata[i].data = (char *)malloc(coldata[i].column_size + 1);
+			retcode = SQLBindCol(hstmt1, i, 
+				SQL_C_CHAR, 
+				coldata[i].data,
+				coldata[i].column_size + 1,
+				&(coldata[i].io_len));
+			if (headings) {
+				fputs(coldata[i].column_name, stdout);
 				if (i < numcol)
 					fputs(field_sep, stdout);
 			}
+		}
+		if (headings)
 			fputs(rec_sep, stdout);
-		} else
-			break;
-
-		fflush(stdout);
+	
+		for (;;) {
+			retcode = SQLFetch(hstmt1);
+			if (retcode == SQL_ERROR || retcode == SQL_SUCCESS_WITH_INFO)
+				report_error(hdbc1);
+			if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO) {
+				for (i = 1; i <= numcol; i++) {
+					if (coldata[i].io_len != SQL_NULL_DATA)
+						fputs(coldata[i].data, stdout);
+					if (i < numcol)
+						fputs(field_sep, stdout);
+				}
+				fputs(rec_sep, stdout);
+			} else
+				break;
+	
+			fflush(stdout);
+		}
 	}
-
+	
 	/* clean up */
 	SQLFreeHandle(SQL_HANDLE_STMT, hstmt1);
 	SQLDisconnect(hdbc1);
