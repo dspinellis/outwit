@@ -1,8 +1,8 @@
 #
-# $Id: makefile,v 1.4 2004-06-05 19:55:25 dds Exp $
+# $Id: makefile,v 1.5 2004-11-19 15:09:43 dds Exp $
 #
 
-VERSION=1.22
+VERSION=1.23
 BINARY=outwit-bin-$(VERSION).zip
 BINDIR=outwit-bin-$(VERSION)
 SOURCE=outwit-src-$(VERSION).zip
