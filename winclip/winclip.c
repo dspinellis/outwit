@@ -2,18 +2,18 @@
  * Copy/Paste the Windows Clipboard
  *
  * (C) Copyright 1994-2004 Diomidis Spinellis
- * 
+ *
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
  * provided that the above copyright notice appear in all copies and that
  * both that copyright notice and this permission notice appear in
  * supporting documentation.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.16 2004-02-27 17:06:56 dds Exp $
+ * $Id: winclip.c,v 1.17 2004-02-27 17:07:41 dds Exp $
  *
  */
 
@@ -40,16 +40,16 @@ error(char *s)
 	LPVOID lpMsgBuf;
 	char buff[1024];
 
-	FormatMessage( 
-	    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-	    FORMAT_MESSAGE_FROM_SYSTEM | 
+	FormatMessage(
+	    FORMAT_MESSAGE_ALLOCATE_BUFFER |
+	    FORMAT_MESSAGE_FROM_SYSTEM |
 	    FORMAT_MESSAGE_IGNORE_INSERTS,
 	    NULL,
 	    GetLastError(),
 	    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 	    (LPTSTR) &lpMsgBuf,
 	    0,
-	    NULL 
+	    NULL
 	);
 	fprintf(stderr, "%s: %s\n", s, lpMsgBuf);
 	LocalFree(lpMsgBuf);
@@ -71,7 +71,7 @@ unicode_fputs(const wchar_t *str, FILE *iofile)
 			exit(1);
 		}
 		if (WideCharToMultiByte(CP_UTF8, 0, str, wlen, mbs, blen, NULL, NULL) == 0) {
-			CloseClipboard(); 
+			CloseClipboard();
 			error("Error converting wide characters into a multi byte sequence");
 		}
 		if (bom)
@@ -87,8 +87,8 @@ unicode_fputs(const wchar_t *str, FILE *iofile)
 void
 usage(void)
 {
-	fprintf(stderr, 
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.16 $\n"
+	fprintf(stderr,
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.17 $\n"
 		"(C) Copyright 1994-2004 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -182,19 +182,19 @@ main(int argc, char *argv[])
 		if (IsClipboardFormatAvailable(textfmt)) {
 			/* Clipboard contains text; copy it */
 			hglb = GetClipboardData(textfmt);
-			if (hglb != NULL) { 
+			if (hglb != NULL) {
 				setmode(fileno(iofile), O_BINARY);
 				if (textfmt == CF_UNICODETEXT)
 					unicode_fputs(hglb, iofile);
 				else
 					fprintf(iofile, "%s", hglb);
 			}
-			CloseClipboard(); 
+			CloseClipboard();
 			return (0);
 		} else if (IsClipboardFormatAvailable(CF_HDROP)) {
 			/* Clipboard contains file names; print them */
 			hglb = GetClipboardData(CF_HDROP);
-			if (hglb != NULL) { 
+			if (hglb != NULL) {
 				int nfiles, i;
 				char fname[4096];
 
@@ -217,12 +217,12 @@ main(int argc, char *argv[])
 					}
 				}
 			}
-			CloseClipboard(); 
+			CloseClipboard();
 			return (0);
 		} else if (IsClipboardFormatAvailable(CF_BITMAP)) {
 			/* Clipboard contains a bitmap; dump it */
 			hglb = GetClipboardData(CF_BITMAP);
-			if (hglb != NULL) { 
+			if (hglb != NULL) {
 				SIZE dim;
 				BITMAP bmp;
 				HDC hdc;
@@ -248,9 +248,9 @@ main(int argc, char *argv[])
 				SelectObject(hdc, oldobj);
 				DeleteDC(hdc);
 			}
-			CloseClipboard(); 
+			CloseClipboard();
 		} else {
-			CloseClipboard(); 
+			CloseClipboard();
 			error("The clipboard does not contain text or files");
 		}
 		if (ferror(iofile)) {
@@ -274,7 +274,7 @@ main(int argc, char *argv[])
 		if (!OpenClipboard(NULL))
 			error("Unable to open the clipboard");
 		if (!EmptyClipboard()) {
-			CloseClipboard(); 
+			CloseClipboard();
 			error("Unable to empty the clipboard");
 		}
 
@@ -282,7 +282,7 @@ main(int argc, char *argv[])
 		setmode(fileno(iofile), O_BINARY);
 		bp = b = malloc(remsiz = bsiz = CHUNK);
 		if (b == NULL) {
-			CloseClipboard(); 
+			CloseClipboard();
 			fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", bsiz);
 			return (1);
 		}
@@ -293,7 +293,7 @@ main(int argc, char *argv[])
 			if (remsiz < CHUNK) {
 				b = realloc(b, bsiz *= 2);
 				if (b == NULL) {
-					CloseClipboard(); 
+					CloseClipboard();
 					fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", bsiz);
 					return (1);
 				}
@@ -327,11 +327,11 @@ main(int argc, char *argv[])
 
 			if (b2 == NULL) {
 				fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", b2siz);
-				CloseClipboard(); 
+				CloseClipboard();
 				return (1);
 			}
 			if ((ret = MultiByteToWideChar(CP_UTF8, 0, b, total, (LPWSTR)b2, b2siz)) == 0) {
-				CloseClipboard(); 
+				CloseClipboard();
 				error("Error converting a multi byte sequence into wide characters");
 			}
 			total = ret * 2;
@@ -349,14 +349,14 @@ main(int argc, char *argv[])
 			}
 		}
 		hglb = GlobalAlloc(GMEM_DDESHARE, total + 1);
-		if (hglb == NULL) { 
-			CloseClipboard(); 
+		if (hglb == NULL) {
+			CloseClipboard();
 			error("Unable to allocate clipboard memory");
 		}
 		memcpy(hglb, b, total);
 		((char *)hglb)[total] = '\0';
-		SetClipboardData(textfmt, hglb); 
-		CloseClipboard(); 
+		SetClipboardData(textfmt, hglb);
+		CloseClipboard();
 		if (ferror(iofile)) {
 			perror(fname);
 			return (1);

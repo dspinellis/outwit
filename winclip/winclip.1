@@ -1,22 +1,22 @@
 .TH WINCLIP 1 "27 February 2004"
 .\" (C) Copyright 1998-2004 Diomidis Spinellis.  All rights reserved.
-.\" 
+.\"
 .\" Permission to use, copy, and distribute this software and its
 .\" documentation for any purpose and without fee is hereby granted,
 .\" provided that the above copyright notice appear in all copies and that
 .\" both that copyright notice and this permission notice appear in
 .\" supporting documentation.
-.\" 
+.\"
 .\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.7 2004-02-27 17:06:56 dds Exp $
+.\" $Id: winclip.1,v 1.8 2004-02-27 17:07:41 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
 .SH SYNOPSIS
-\fBwinclip\fP 
+\fBwinclip\fP
 [\fB\-w\fP|\fB\-u\fP\fB\-m\fP]
 [\fB\-b\fP]
 \fB-c\fP|\fB-p\fP
@@ -43,8 +43,8 @@ are pasted in binary \fIppm\fP format.
 When tranfering text,
 it will automatically perform the appropriate Windows to console
 character code (OEM) set translations.
-\fIWinclip\fP is an Intel architecture Win32 program that only works under 
-the Intel processor versions of Windows NT, 95, 98, Me, 2000.
+\fIWinclip\fP is an Intel architecture Win32 program that only works under
+the Intel processor versions of Windows NT, 95, 98, Me, 2000, XP.
 .SH OPTIONS
 .IP "\fB\-c\fP"
 Copy the standard input to the Windows clipboard.
