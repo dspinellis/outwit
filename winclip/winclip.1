@@ -1,0 +1,69 @@
+.TH WINCLIP 1 "25 March 2000"
+.\" (C) Copyright 1998, 2000 Diomidis Spinellis.  All rights reserved.
+.\" 
+.\" Permission to use, copy, and distribute this software and its
+.\" documentation for any purpose and without fee is hereby granted,
+.\" provided that the above copyright notice appear in all copies and that
+.\" both that copyright notice and this permission notice appear in
+.\" supporting documentation.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" $Id: winclip.1,v 1.1 2000-07-07 13:36:09 dds Exp $
+.\"
+.SH NAME
+winclip \- console Windows clipboard interface
+.SH SYNOPSIS
+\fBwinclip\fP 
+\fB-c\fP|\fB-p\fP
+.SH DESCRIPTION
+\fIWinclip\fP provides access to the Windows clipboard from a console
+or MS-DOS window.
+Its operation depends on its mandatory argument.
+When executed with the -p (paste) argument it pastes
+the Windows clipboard to its standard output.
+The \fIwinclip\fP output may be redirected
+to a file (using the shell > syntax) or to another process
+(using the shell | pipeline syntax).
+When \fIwinclip\fP is executed with the -c (copy) argument
+it copies its standard input to the Windows clipboard.
+Again, \fIwinclip\fP input may be redirected to be read from a file
+(using the < shell syntax), or from another process of a pipeline.
+.LP
+\fIWinclip\fP can currently paste text clipboard data, filenames
+that have been copied in the Windows explorer, and bitmaps which
+are pasted in binary \fIppm\fP format.
+When tranfering text,
+it will automatically perform the appropriate Windows to console
+character code set translations.
+\fIWinclip\fP is an Intel architecture Win32 program that only works under 
+the Intel processor versions of Windows NT, Windows 95, and Windows 98.
+.SH EXAMPLE
+dir /b | winclip -c
+.br
+Copies the directory list to the Windows clipboard.
+.LP
+winclip -p >file.txt
+.br
+Saves the Windows clipboard to file.txt.
+.LP
+winclip -p | perl -pe "tr/[A-Z]/[a-z]/" | winclip -c
+.br
+Converts the contents of the Windows clipboard to lowercase.
+
+.SH AUTHOR
+(C) Copyright 1994-2000 Diomidis Spinellis.  All rights reserved.
+.LP
+Permission to use, copy, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation.
+.LP
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.SH BUGS
+Should handle more clipboard content types.
