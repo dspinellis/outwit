@@ -2,7 +2,7 @@
  *
  * readlink -- resolve shell shortcuts
  *
- * $Id: readlink.c,v 1.1 2000-04-01 12:27:51 dds Exp $
+ * $Id: readlink.c,v 1.2 2000-04-01 12:36:45 dds Exp $
  *
  * (C) Copyright 1999, 2000 Diomidis Spinellis
  * 
@@ -127,9 +127,9 @@ main(int argc, char *argv[])
 	static char     path[1024];
 	int             r;
 
-	if (argc != 2) {
+	if (argc != 2 || *argv[1] == '-') {
 		fprintf(stderr, 
-		"readlink - resolve shell shortcuts.  $Revision: 1.1 $\n"
+		"readlink - resolve shell shortcuts.  $Revision: 1.2 $\n"
 		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
