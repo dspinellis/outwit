@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.1 2002-07-09 18:57:20 dds Exp $
+ * $Id: readlog.c,v 1.2 2002-07-10 09:46:41 dds Exp $
  *
  */
 
@@ -43,7 +43,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.1 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.2 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -186,17 +186,54 @@ print_uname(EVENTLOGRECORD *pelr)
 		wperror("LookupAccountSid", GetLastError());
 }
 
+static char *
+get_message(char *msgfile, DWORD id, char *argv[])
+{
+	HINSTANCE mh;
+	char *outmsg;
+
+	/* TODO: cache opened libraries */
+	if ((mh = LoadLibraryEx(msgfile, NULL, LOAD_LIBRARY_AS_DATAFILE)) == NULL) {
+		wperror(msgfile, GetLastError());
+		return NULL;
+	}
+	if (FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+		FORMAT_MESSAGE_FROM_HMODULE |
+		FORMAT_MESSAGE_ARGUMENT_ARRAY,
+		mh, id, 0, (LPTSTR)&outmsg, 1024, argv) == 0) {
+		wperror("FormatMessage", GetLastError());
+		FreeLibrary(mh);
+		return NULL;
+	}
+	FreeLibrary(mh);
+	return (outmsg);
+}
+static int
+get_regentry(HANDLE rh, char *name, char *result)
+{
+	DWORD type;
+	DWORD datalen;
+	char tmpstr[1024];
+	int ret;
+
+	datalen = sizeof(tmpstr);
+	if ((ret = RegQueryValueEx(rh, name, NULL, &type, tmpstr, &datalen)) != ERROR_SUCCESS)
+		return 0;
+	if (ExpandEnvironmentStrings(tmpstr, result, sizeof(tmpstr)) == 0)
+		return 0;
+	return 1;
+}
+
 static void
 print_msg(EVENTLOGRECORD *pelr)
 {
 	char key[1024];
-	char tmpstr[1024];
 	char msgfile[1024];
-	DWORD type;
-	DWORD datalen;
+	char catfile[1024];
+	char paramfile[1024];
 	int ret;
 	HANDLE rh;
-	HINSTANCE mh;
 	char *outmsg;
 	char *argv[1024];
 	int i;
@@ -211,41 +248,29 @@ print_msg(EVENTLOGRECORD *pelr)
 		wperror(key, ret);
 		return;
 	}
-	datalen = sizeof(tmpstr);
-	if ((ret = RegQueryValueEx(rh, "EventMessageFile", NULL, &type, tmpstr, &datalen)) != ERROR_SUCCESS) {
+	if (!get_regentry(rh, "EventMessageFile", msgfile)) {
 		wperror("EventMessageFile", ret);
 		RegCloseKey(rh);
 		return;
 	}
 	RegCloseKey(rh);
-	if (ExpandEnvironmentStrings(tmpstr, msgfile, sizeof(msgfile)) == 0)
-		wperror("ExpandEnvironmentStrings", ret);
 	/* Event source */
 	if (o_source)
 		printf("%s: ", (LPSTR) ((LPBYTE) pelr + sizeof(EVENTLOGRECORD)));
 	/* Event type */
 	if (o_type)
 		printf("%s: ", evtype(pelr->EventType));
-	/* Category is seldom used: printf("CAT: %d: ", pelr->EventCategory); */
+	/* Category is seldom used: */
+	printf("CAT: %d: ", pelr->EventCategory);
 	print_uname(pelr);
 	/*
 	 * Some message file specs use a ; separated path.
 	 * This is undocumented and we do not support it.
 	 */
-	if ((mh = LoadLibraryEx(msgfile, NULL, LOAD_LIBRARY_AS_DATAFILE)) == NULL) {
-		wperror(msgfile, GetLastError());
-		return;
-	}
 	for (i = 0, p = (char *)((LPBYTE) pelr + pelr->StringOffset); i < pelr->NumStrings; p += strlen(argv[i]) + 1, i++)
 		argv[i] = p;
-	if (FormatMessage(
-		FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-		FORMAT_MESSAGE_FROM_HMODULE |
-		FORMAT_MESSAGE_ARGUMENT_ARRAY,
-		mh, pelr->EventID, 0, (LPTSTR)&outmsg, 1024, argv) == 0) {
-		wperror("FormatMessage", GetLastError());
+	if ((outmsg = get_message(msgfile, pelr->EventID, argv)) == NULL)
 		return;
-	}
 	if (o_newline)
 		printf("\n%s", outmsg);
 	else
@@ -257,7 +282,6 @@ print_msg(EVENTLOGRECORD *pelr)
 			}
 	putchar('\n');
 	LocalFree(outmsg);
-	FreeLibrary(mh);	/* TODO: cache libraries */
 }
 
 static void
