@@ -1,5 +1,5 @@
-.TH WINREG 1 "11 July 2002"
-.\" (C) Copyright 1999-2002 Diomidis Spinellis.  All rights reserved.
+.TH WINREG 1 "10 March 2003"
+.\" (C) Copyright 1999-2003 Diomidis Spinellis.  All rights reserved.
 .\" 
 .\" Permission to use, copy, and distribute this software and its
 .\" documentation for any purpose and without fee for noncommercial use
@@ -11,13 +11,14 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winreg.1,v 1.1 2003-02-28 18:28:33 dds Exp $
+.\" $Id: winreg.1,v 1.2 2003-12-07 10:11:44 dds Exp $
 .\"
 .SH NAME
 winreg \- text-based access to the Windows registry
 .SH SYNOPSIS
 \fBwinreg\fP 
 [\fB\-F\fP \fIFS\fP]
+[\fB\-r\fP \fIname\fP]
 [\fB\-ntvc\fP]
 [\fIkey\fP]
 .SH DESCRIPTION
@@ -82,6 +83,19 @@ and redirecting their output back to the registry via \fIwinreg\fP.
 Specify the field separator used to delimit fields (registry key name,
 type, value) on output.
 The default field separator is a tab.
+.IP "\fB\-r\fP \fBname\fP"
+Connect to the registry of the remote machine \fBname\fP, instead of the
+local registry.
+Data will be retrieved from and stored to the remote registry.
+Appropriate permissions must be establshed and services be running;
+see http://\%msdn.\%microsoft.\%com/\%library/\%default.%asp?\%url=/\%library/\%en-us/\%sysinfo/\%base/\%regconnectregistry.asp.
+The name can be 
+a Netbios name (\\\\\fIhost\fP),
+a Netbios IP-address (\\\\\fI192.168.1.2\fP),
+a Netbios fully qualified domain name (\\\\\fIhost.\%company.\%com\fP),
+an Internet host name (\\\\\fIhost\fP),
+an Internet host IP-address (\\\\\fI192.168.1.2\fP), or
+an Internet host fully qualified domain name (\\\\\fIhost.\%company.\%com\fP).
 .IP "\fB\-n\fP"
 Do not print key names.
 .IP "\fB\-t\fP"
@@ -107,6 +121,11 @@ sed -n 's,C:/home,D:/home,gp' |
 winreg
 .br
 Change all user registry references from c:/home to d:/home.
+.LP
+winreg -r \\\\pooh HKEY_LOCAL_MACHINE\\Software\\Netscape | winreg -r \\\\piglet
+.br
+Copy the Netscape machine-specific software settings from the registry
+of the machine \fIpoo\fP to the registry of the machine \fIpiglet\fP.
 .SH "SEE ALSO"
 D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
 In \fIUSENIX 2000 Technical Conference Proceedings\fP, pages 149-158, San Diego, CA, USA,
@@ -121,7 +140,7 @@ Ron Petrusha and Andrew Schulman.
 O'Reilly & Associates.
 
 .SH AUTHOR
-(C) Copyright 1999, 2000 Diomidis Spinellis.  All rights reserved.
+(C) Copyright 1999-2003 Diomidis Spinellis.  All rights reserved.
 .LP
 Permission to use, copy, and distribute this software and its
 documentation for any purpose and without fee is hereby granted,
@@ -137,3 +156,7 @@ Although reasonable care has been taken to make \fIwinreg\fP work
 with many possible types of registry data, note that incorrect
 operation by \fIwinreg\fP or inappropriate registry data manipulations
 can render a machine unusable.
+.LP
+At least under Windows 2000 SP2, a failed remote connection is not correctly
+reported by the Windows API, and may cause the program to display
+wrong data or silently fail.
