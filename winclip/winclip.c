@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.10 2001-03-08 11:33:11 dds Exp $
+ * $Id: winclip.c,v 1.11 2001-03-08 11:36:24 dds Exp $
  *
  */
 
@@ -50,7 +50,7 @@ void
 usage(void)
 {
 	fprintf(stderr, 
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.10 $\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.11 $\n"
 		"(C) Copyright 1994-2001 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -192,7 +192,7 @@ main(int argc, char *argv[])
 		 * Copy our input to the Windows Clipboard
 		 */
 		if (argc - optind == 1) {
-			if ((iofile = fopen(fname = argv[optind], "b")) == NULL) {
+			if ((iofile = fopen(fname = argv[optind], "r")) == NULL) {
 				perror(argv[optind]);
 				return (1);
 			}
