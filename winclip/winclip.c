@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.8 2000-04-01 12:32:26 dds Exp $
+ * $Id: winclip.c,v 1.9 2000-07-07 11:02:48 dds Exp $
  *
  */
 
@@ -50,7 +50,7 @@ void
 usage(void)
 {
 	fprintf(stderr, 
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.8 $\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.9 $\n"
 		"(C) Copyright 1994, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -63,12 +63,15 @@ usage(void)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: winclip -c|-p\n");
+		"usage: winclip [-w] -c|-p\n");
 	exit(1);
 }
 
 // I/O chunk
 #define CHUNK 1024
+
+int getopt(int argc, char *argv[], char *optstring);
+
 
 main(int argc, char *argv[])
 {
@@ -77,20 +80,39 @@ main(int argc, char *argv[])
 	size_t bsiz, remsiz;	/* Buffer, size, remaining size */
 	size_t total;		/* Total read */
 	int n;
+	enum {O_NONE, O_COPY, O_PASTE} operation = O_NONE;
+	unsigned int textfmt = CF_OEMTEXT;
+	int c;
 
-	if (argc != 2)
-		usage();
+	while ((c = getopt(argc, argv, "wcp")) != EOF)
+		switch (c) {
+		case 'w':
+			textfmt = CF_TEXT;
+			break;
+		case 'c':
+			if (operation != O_NONE)
+				usage();
+			operation = O_COPY;
+			break;
+		case 'p':
+			if (operation != O_NONE)
+				usage();
+			operation = O_PASTE;
+			break;
+		case '?':
+			usage();
+		}
 
-
-	if (strcmp(argv[1], "-p") == 0) {
+	switch (operation) {
+	case O_PASTE:
 		/*
 		 * Paste the Windows clipboard to standard output
 		 */
 		if (!OpenClipboard(NULL))
 			error("Unable to open clipboard");
-		if (IsClipboardFormatAvailable(CF_OEMTEXT)) {
+		if (IsClipboardFormatAvailable(textfmt)) {
 			/* Clipboard contains OEM text; copy it */
-			hglb = GetClipboardData(CF_OEMTEXT);
+			hglb = GetClipboardData(textfmt);
 			if (hglb != NULL) { 
 				setmode(1, O_BINARY);
 				printf("%s", hglb);
@@ -142,12 +164,12 @@ main(int argc, char *argv[])
 				DeleteDC(hdc);
 			}
 			CloseClipboard(); 
-			return (0);
 		} else {
 			CloseClipboard(); 
 			error("The clipboard does not contain text or files");
 		}
-	} else if (strcmp(argv[1], "-c") == 0) {
+		break;
+	case O_COPY:
 		/*
 		 * Copy our input to the Windows Clipboard
 		 */
@@ -188,10 +210,12 @@ main(int argc, char *argv[])
 		}
 		memcpy(hglb, b, total);
 		((char *)hglb)[total] = '\0';
-		SetClipboardData(CF_OEMTEXT, hglb); 
+		SetClipboardData(textfmt, hglb); 
 		CloseClipboard(); 
-		return (0);
-	} else
+		break;
+	case O_NONE:
 		usage();
+		break;
+	}
 	return (0);
 }
