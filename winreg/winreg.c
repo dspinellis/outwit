@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.8 2003-03-02 18:17:32 dds Exp $
+ * $Id: winreg.c,v 1.9 2003-03-07 09:44:14 dds Exp $
  *
  */
 
@@ -330,7 +330,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"winreg - Windows registry text-based access.  $Revision: 1.8 $\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.9 $\n"
 		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -478,6 +478,8 @@ input_process(void)
 	nameidx = 0;
 	line = 1;
 	while ((c = getchar()) != EOF) {
+		if (dataidx >= datalen)
+			data = realloc(data, datalen *= 2);
 		switch (state) {
 		case SNAME:
 			if (nameidx >= namelen)
