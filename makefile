@@ -1,5 +1,5 @@
 #
-# $Id: makefile,v 1.3 2004-06-05 19:48:09 dds Exp $
+# $Id: makefile,v 1.4 2004-06-05 19:55:25 dds Exp $
 #
 
 VERSION=1.22
@@ -9,14 +9,15 @@ SOURCE=outwit-src-$(VERSION).zip
 SRCDIR=outwit-src-$(VERSION)
 WEB=/dds/pubs/web/home/sw/outwit
 ZIP=zip
+PROGS=docprop odbc readlink winclip winreg readlog
 
 all:
-	cd winclip ; nmake
-	cd odbc ;  nmake
-	cd docprop ; nmake /f docprop.mak CFG="docprop - Win32 Release"
-	cd winreg ; nmake /f winreg.mak CFG="winreg - Win32 Release"
-	cd readlink ; nmake
-	cd readlog ; nmake
+	cd winclip ; nmake ; make doc
+	cd odbc ;  nmake ; make doc
+	cd docprop ; nmake /f docprop.mak CFG="docprop - Win32 Release" ; make doc
+	cd winreg ; nmake /f winreg.mak CFG="winreg - Win32 Release" ; make doc
+	cd readlink ; nmake ; make doc
+	cd readlog ; nmake ; make doc
 
 clearweb:
 	rm -rf $(WEB)
@@ -25,18 +26,10 @@ clearweb:
 web: clearweb exezip sourcezip
 	sed "s/VERSION/$(VERSION)/g" websrc/index.html >$(WEB)/index.html
 	cp websrc/outwit.jpg $(WEB)
-	cp docprop/docprop.pdf $(WEB)/docprop.pdf
-	cp odbc/odbc.pdf $(WEB)/odbc.pdf
-	cp readlink/readlink.pdf $(WEB)/readlink.pdf
-	cp readlog/readlog.pdf $(WEB)/readlog.pdf
-	cp winclip/winclip.pdf $(WEB)/winclip.pdf
-	cp winreg/winreg.pdf $(WEB)/winreg.pdf
-	cp docprop/docprop.html $(WEB)
-	cp odbc/odbc.html $(WEB)
-	cp readlink/readlink.html $(WEB)
-	cp readlog/readlog.html $(WEB)
-	cp winclip/winclip.html $(WEB)
-	cp winreg/winreg.html $(WEB)
+	for i in $(PROGS) ; do \
+		cp $$i/$$i.html $(WEB) ; \
+		cp $$i/$$i.pdf $(WEB) ; \
+	done
 	cp ChangeLog.txt $(WEB)
 	cp $(BINARY) $(WEB)/$(BINARY)
 	cp $(SOURCE) $(WEB)/$(SOURCE)
@@ -60,7 +53,7 @@ exezip:
 	 winreg/release/winreg.exe readlog/readlog.exe \
 	 $(BINDIR)/bin
 	cp ChangeLog.txt $(BINDIR)
-	for i in docprop odbc readlink winclip winreg readlog ; do \
+	for i in $(PROGS) ; do \
 		cp $$i/$$i.txt $(BINDIR)/doc/txt ; \
 		cp $$i/$$i.html $(BINDIR)/doc/html ; \
 		cp $$i/$$i.pdf $(BINDIR)/doc/pdf ; \
