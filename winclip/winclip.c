@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.6 2000-03-25 18:29:00 dds Exp $
+ * $Id: winclip.c,v 1.7 2000-03-27 14:13:59 dds Exp $
  *
  */
 
@@ -46,6 +46,15 @@ error(char *s)
 	exit(1);
 }
 
+void
+usage(void)
+{
+	fprintf(stderr, "$Id: winclip.c,v 1.7 2000-03-27 14:13:59 dds Exp $\n"
+			"(C) Copyright 1998-1999 Diomidis Spinellis.\n"
+			"May be freely copied without modification.\n\n"
+			"usage: winclip -c|-p\n");
+	exit(1);
+}
 
 // I/O chunk
 #define CHUNK 1024
@@ -58,27 +67,13 @@ main(int argc, char *argv[])
 	size_t total;		/* Total read */
 	int n;
 
-	if (argc > 2 || (argc == 2 && *argv[1] == '-')) {
-		fprintf(stderr, "$Id: winclip.c,v 1.6 2000-03-25 18:29:00 dds Exp $\n"
-				"(C) Copyright 1998-1999 Diomidis Spinellis.\n"
-				"May be freely copied without modification.\n\n"
-				"usage: winclip [filename]\n");
-		return (1);
-	}
+	if (argc != 2)
+		usage();
 
-	if (argc == 2) {
-		/* Redirect stdin */
-		close(0);
-		if (open(argv[1], _O_BINARY | _O_RDONLY) < 0) {
-			perror(argv[1]);
-			return (1);
-		}
-	}
 
-	if (isatty(0)) {
+	if (strcmp(argv[1], "-p") == 0) {
 		/*
-		 * We are the first process in the pipeline.
-		 * Copy the Windows clipboard to standard output
+		 * Paste the Windows clipboard to standard output
 		 */
 		if (!OpenClipboard(NULL))
 			error("Unable to open clipboard");
@@ -141,10 +136,8 @@ main(int argc, char *argv[])
 			CloseClipboard(); 
 			error("The clipboard does not contain text or files");
 		}
-	} else if (isatty(1) || (argc == 2)) {
+	} else if (strcmp(argv[1], "-c") == 0) {
 		/*
-		 * We are the last process in the pipeline, or
-		 * the user has specified an input file.
 		 * Copy our input to the Windows Clipboard
 		 */
 		if (!OpenClipboard(NULL))
@@ -187,9 +180,7 @@ main(int argc, char *argv[])
 		SetClipboardData(CF_OEMTEXT, hglb); 
 		CloseClipboard(); 
 		return (0);
-	} else {
-		fprintf(stderr, "winclip must be first or last in a pipeline\n");
-		return (1);
-	}
+	} else
+		usage();
 	return (0);
 }
