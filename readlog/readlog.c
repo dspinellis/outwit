@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.9 2002-07-10 12:33:43 dds Exp $
+ * $Id: readlog.c,v 1.10 2002-07-10 12:39:13 dds Exp $
  *
  */
 
@@ -30,7 +30,6 @@
  */
 static char *time_fmt = "%b %d %H:%M:%S";
 static char *server = NULL;
-static char *source = "System";
 static int o_direction = EVENTLOG_FORWARDS_READ;
 static int o_id = 0;
 static int o_user = 1;
@@ -47,7 +46,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.9 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.10 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -60,7 +59,7 @@ usage(char *fname)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: %s [-t fmt] [-v server] [-riuwsycahn] [source]\n"
+		"usage: %s [-t fmt] [-v server] [-riuwsycahn] [source ...]\n"
 		"\t-t fmt\tTime format string (strftime)\n"
 		"\t-v server\tServer name\n"
 		"\t-r\tPrint entries in reverse order\n"
@@ -84,7 +83,7 @@ usage(char *fname)
 extern char	*optarg;	/* Global argument pointer. */
 extern int	optind;		/* Global argv index. */
 int getopt(int argc, char *argv[], char *optstring);
-static void print_log(void);
+static void print_log(char *source);
 
 main(int argc, char *argv[])
 {
@@ -117,13 +116,11 @@ main(int argc, char *argv[])
 			usage(argv[0]);
 		}
 
-	if (argv[optind] != NULL) {
-		if (argv[optind + 1] != NULL)
-			usage(argv[0]);
-		/* Dump a key */
-		source = argv[optind];
-	}
-	print_log();
+	if (argv[optind] != NULL)
+		while (argv[optind])
+			print_log(argv[optind++]);
+	else
+		print_log("System");
 	return (0);
 }
 
@@ -314,7 +311,7 @@ print_data(unsigned char *data, unsigned len)
 }
 
 static void
-print_msg(EVENTLOGRECORD *pelr)
+print_msg(EVENTLOGRECORD *pelr, char *source)
 {
 	char key[1024];
 	char msgfile[1024];
@@ -408,7 +405,7 @@ print_msg(EVENTLOGRECORD *pelr)
 }
 
 static void
-print_log(void)
+print_log(char *source)
 {
 	HANDLE          h;
 	EVENTLOGRECORD *pevlr;
@@ -438,7 +435,7 @@ again:
 			    &dwNeeded))	// bytes in next record 
 	{
 		while (dwRead > 0) {
-			print_msg(pevlr);
+			print_msg(pevlr, source);
 			dwRead -= pevlr->Length;
 			pevlr =
 			    (EVENTLOGRECORD *) ((LPBYTE) pevlr +
