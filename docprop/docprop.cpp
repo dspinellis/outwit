@@ -1,9 +1,20 @@
 /*
  * Print the properties of an OLE structured storage document
  *
- * D. Spinellis
+ * (C) Copyright 1999, 2000 Diomidis Spinellis
+ * 
+ * Permission to use, copy, and distribute this software and its
+ * documentation for any purpose and without fee is hereby granted,
+ * provided that the above copyright notice appear in all copies and that
+ * both that copyright notice and this permission notice appear in
+ * supporting documentation.
+ * 
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+ * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: docprop.cpp,v 1.3 2000-01-27 07:11:21 dds Exp $
+ *
+ * $Id: docprop.cpp,v 1.4 2000-04-01 12:30:05 dds Exp $
  *
  */
 
@@ -74,7 +85,7 @@ struct pidsiStruct docsummary_pidsi[] = {
  * Return a malloced copy of a PROPVARIANT type or NULL
  */
 char *
-propvariant_string(PROPVARIANT * pPropVar)
+propvariant_string(PROPVARIANT * pPropVar, bool relative_time)
 {
 	char buff[4096];
 
@@ -116,12 +127,24 @@ propvariant_string(PROPVARIANT * pPropVar)
 		{
 			FILETIME        lft;
 			FileTimeToLocalFileTime(&pPropVar->filetime, &lft);
-			SYSTEMTIME      lst;
-			FileTimeToSystemTime(&lft, &lst);
 
-			sprintf(buff, "%4d/%02d/%02d %02d:%02d:%02d",
-			        lst.wYear, lst.wMonth, lst.wDay, 
-			        lst.wHour, lst.wMinute, lst.wSecond);
+			if (relative_time) {
+				ULARGE_INTEGER t;
+
+				t.LowPart = lft.dwLowDateTime;
+				t.HighPart = lft.dwHighDateTime;
+				sprintf(buff, "%d", t.QuadPart / 10000000);
+				// lst.wYear -= 1601;
+				// lst.wMonth--;
+				// lst.wDay--;
+			} else {
+				SYSTEMTIME      lst;
+
+				FileTimeToSystemTime(&lft, &lst);
+				sprintf(buff, "%4d/%02d/%02d %02d:%02d:%02d",
+					lst.wYear, lst.wMonth, lst.wDay, 
+					lst.wHour, lst.wMinute, lst.wSecond);
+			}
 			return (strdup(buff));
 		}
 	case VT_CF:
@@ -167,7 +190,7 @@ get_builtin_props(IPropertySetStorage * pPropSetStg, REFFMTID fmid, struct pidsi
 		for (i = 0; i < nPidsi; i++) {
 			nvp = new s_nameval;
 			nvp->name = strdup(pidsiArr[i].name);
-			nvp->val = propvariant_string(pPropVar + i);
+			nvp->val = propvariant_string(pPropVar + i, pidsiArr[i].pidsi == PIDSI_EDITTIME);
 			nvp->next = nv;
 			nv = nvp;
 		}
@@ -218,7 +241,7 @@ get_custom_props(IPropertySetStorage * pPropSetStg)
 
 			struct s_nameval *nvp = new s_nameval;
 			nvp->name = strdup(dbcs);
-			nvp->val = propvariant_string(propVar);
+			nvp->val = propvariant_string(propVar, FALSE);
 			nvp->next = nv;
 			nv = nvp;
 		}
@@ -268,10 +291,24 @@ usage(char *s)
 {
 	int i;
 
-	fprintf(stderr, "Usage: %s [-f format] filename ...\n"
-			"\tFormat is a string with embedded property names in braces\n"
-			"\t(e.g. {variable}) and C escape codes.\n"
-			"\tThe following (and all user-defined) property names can be used:\n", s);
+	fprintf(stderr, 
+		"docprop - print the properties of an OLE structured storage document.  $Revision: 1.4 $\n"
+		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+
+		"Permission to use, copy, and distribute this software and its\n"
+		"documentation for any purpose and without fee is hereby granted,\n"
+		"provided that the above copyright notice appear in all copies and that\n"
+		"both that copyright notice and this permission notice appear in\n"
+		"supporting documentation.\n\n"
+
+		"THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED\n"
+		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
+		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+
+		"Usage: %s [-f format] filename ...\n"
+		"\tFormat is a string with embedded property names in braces\n"
+		"\t(e.g. {variable}) and C escape codes.\n"
+		"\tThe following (and all user-defined) property names can be used:\n", s);
 	fprintf(stderr, "\t{Filename}");
 	for (i = 0; summary_pidsi[i].name; i++)
 		fprintf(stderr, ", {%s}", summary_pidsi[i].name);
