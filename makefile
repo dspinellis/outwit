@@ -1,8 +1,8 @@
 #
-# $Id: makefile,v 1.5 2004-11-19 15:09:43 dds Exp $
+# $Id: makefile,v 1.6 2005-02-10 15:12:50 dds Exp $
 #
 
-VERSION=1.23
+VERSION=1.24
 BINARY=outwit-bin-$(VERSION).zip
 BINDIR=outwit-bin-$(VERSION)
 SOURCE=outwit-src-$(VERSION).zip
@@ -65,6 +65,6 @@ sourcezip:
 	rm -f $(SOURCE)
 	-cmd /c rd /s/q $(SRCDIR)
 	mkdir $(SRCDIR)
-	sh -c "tar -cf - {docprop,odbc,readlink,winclip,winreg,readlog}/makefile */*.[1ch] */*.mak */*.cpp ChangeLog.txt | tar -C $(SRCDIR) -xf -"
+	sh -c "tar -cf - {docprop,odbc,readlink,winclip,winreg,readlog}/makefile */*.[1ch] */*.mak */*.cpp */*.pl ChangeLog.txt | tar -C $(SRCDIR) -xf -"
 	zip -r $(SOURCE) $(SRCDIR)
 	-cmd /c rd /s/q $(SRCDIR)
