@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.13 2002-01-03 13:01:10 dds Exp $
+ * $Id: winclip.c,v 1.14 2003-09-06 08:09:28 dds Exp $
  *
  */
 
@@ -50,7 +50,7 @@ void
 usage(void)
 {
 	fprintf(stderr, 
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.13 $\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.14 $\n"
 		"(C) Copyright 1994-2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -136,7 +136,7 @@ main(int argc, char *argv[])
 			hglb = GetClipboardData(textfmt);
 			if (hglb != NULL) { 
 				setmode(fileno(iofile), O_BINARY);
-				fwprintf(iofile, L"%s", hglb);
+				fwprintf(iofile, textfmt == CF_UNICODETEXT ?  L"%s" : L"%S", hglb);
 			}
 			CloseClipboard(); 
 			return (0);
@@ -155,7 +155,7 @@ main(int argc, char *argv[])
 						fprintf(iofile, "%s\n", fname);
 						break;
 					case CF_UNICODETEXT:
-						DragQueryFileW(hglb, i, fname, sizeof(fname));
+						DragQueryFileW(hglb, i, (LPWSTR)fname, sizeof(fname));
 						setmode(fileno(iofile), O_BINARY);
 						fwprintf(iofile, L"%s\n", fname);
 						break;
