@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.11 2004-11-19 10:41:13 dds Exp $
+ * $Id: readlog.c,v 1.12 2004-11-19 11:42:05 dds Exp $
  *
  */
 
@@ -47,7 +47,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.11 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.12 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -156,7 +156,7 @@ wperror(char *s, LONG err)
 	    0,
 	    NULL 
 	);
-	fprintf(stderr, "%s: %s\n", s, lpMsgBuf);
+	fprintf(stderr, "%s: %s", s, lpMsgBuf);
 	LocalFree(lpMsgBuf);
 }
 
@@ -225,6 +225,11 @@ get_message(char *msgfile, DWORD id, char *argv[])
 	return p;
 }
 
+/*
+ * Get a registry entry for name from rh expanding the environment strings
+ * into name.
+ * Return ERROR_SUCCESS if ok, otherwise the error code.
+ */
 static int
 get_regentry(HANDLE rh, char *name, char *result)
 {
@@ -235,10 +240,10 @@ get_regentry(HANDLE rh, char *name, char *result)
 
 	datalen = sizeof(tmpstr);
 	if ((ret = RegQueryValueEx(rh, name, NULL, &type, tmpstr, &datalen)) != ERROR_SUCCESS)
-		return 0;
+		return ret;
 	if (ExpandEnvironmentStrings(tmpstr, result, sizeof(tmpstr)) == 0)
-		return 0;
-	return 1;
+		return GetLastError();
+	return ERROR_SUCCESS;
 }
 
 static void
@@ -338,7 +343,8 @@ print_msg(EVENTLOGRECORD *pelr, char *source)
 		regok = 0;
 	} else
 		regok = 1;
-	if (regok && !get_regentry(rh, "EventMessageFile", msgfile)) {
+	if (regok && (ret = get_regentry(rh, "EventMessageFile", msgfile)) != ERROR_SUCCESS) {
+		fprintf(stderr, "%s\\", key);
 		wperror("EventMessageFile", ret);
 		RegCloseKey(rh);
 	}
@@ -354,13 +360,16 @@ print_msg(EVENTLOGRECORD *pelr, char *source)
 
 		if (!regok || pelr->EventCategory == 0)
 			printf("-: ");
-		else if (get_regentry(rh, "CategoryMessageFile", catfile)) {
+		else if ((ret = get_regentry(rh, "CategoryMessageFile", catfile)) == ERROR_SUCCESS) {
 			category = get_message(catfile, pelr->EventCategory, NULL);
 			print_oneline(category);
 			printf(": ");
 			LocalFree(category);
-		} else
-			wperror("Event category", GetLastError());
+		} else {
+			fprintf(stderr, "%s\\", key);
+			wperror("CategoryMessageFile", ret);
+			printf("%d: ", pelr->EventCategory);
+		}
 	}
 	/* Event type */
 	if (o_type)
@@ -377,7 +386,7 @@ print_msg(EVENTLOGRECORD *pelr, char *source)
 	for (i = 0, p = (char *)((LPBYTE) pelr + pelr->StringOffset); i < pelr->NumStrings; p += strlen(argv[i]) + 1, i++)
 		argv[i] = p;
 	outmsg = get_message(msgfile, pelr->EventID, argv);
-	if (get_regentry(rh, "ParameterMessageFile", paramfile)) {
+	if (get_regentry(rh, "ParameterMessageFile", paramfile) == ERROR_SUCCESS) {
 		char *src, *dst;
 
 		msg = malloc(strlen(outmsg) + 1);
