@@ -1,7 +1,7 @@
 /*
  * Copy/Paste the Windows Clipboard
  *
- * (C) Copyright 1998 Diomidis Spinellis
+ * (C) Copyright 1994-1999 Diomidis Spinellis
  * 
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.3 1999-06-09 09:57:10 dds Exp $
+ * $Id: winclip.c,v 1.4 1999-06-09 10:33:59 dds Exp $
  *
  */
 
@@ -59,8 +59,8 @@ main(int argc, char *argv[])
 	int n;
 
 	if (argc > 2 || (argc == 2 && *argv[1] == '-')) {
-		fprintf(stderr, "$Id: winclip.c,v 1.3 1999-06-09 09:57:10 dds Exp $\n"
-				"Copyright 1998, 1999 Diomidis Spinellis.  "
+		fprintf(stderr, "$Id: winclip.c,v 1.4 1999-06-09 10:33:59 dds Exp $\n"
+				"(C) Copyright 1998-1999 Diomidis Spinellis.\n"
 				"May be freely copied without modification.\n\n"
 				"usage: winclip [filename]\n");
 		return (1);
@@ -108,7 +108,7 @@ main(int argc, char *argv[])
 			return (0);
 		} else {
 			CloseClipboard(); 
-			error("The clipboard does not contain text");
+			error("The clipboard does not contain text or files");
 		}
 	} else if (isatty(1) || (argc == 2)) {
 		/*
@@ -148,9 +148,8 @@ main(int argc, char *argv[])
 		}
 		hglb = GlobalAlloc(GMEM_DDESHARE, total + 1);
 		if (hglb == NULL) { 
-			error("Unable to allocate clipboard memory");
 			CloseClipboard(); 
-			return (1);
+			error("Unable to allocate clipboard memory");
 		}
 		memcpy(hglb, b, total);
 		((char *)hglb)[total] = '\0';
