@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.3 2002-07-10 10:20:37 dds Exp $
+ * $Id: readlog.c,v 1.4 2002-07-10 10:38:37 dds Exp $
  *
  */
 
@@ -36,6 +36,7 @@ static int o_user = 1;
 static int o_computer = 1;
 static int o_source = 1;
 static int o_type = 1;
+static int o_category = 1;
 static int o_ascii = 0;
 static int o_hex = 0;
 static int o_newline = 0;
@@ -44,7 +45,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.3 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.4 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -57,14 +58,15 @@ usage(char *fname)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: %s [-t fmt] [-v server] [-rucsyahn] [source]\n"
+		"usage: %s [-t fmt] [-v server] [-ruwsycahn] [source]\n"
 		"\t-t fmt\tTime format string (strftime)\n"
 		"\t-v server\tServer name\n"
 		"\t-r\tPrint entries in reverse order\n"
 		"\t-u\tDo not print user information\n"
-		"\t-c\tDo not print computer name\n"
+		"\t-w\tDo not print workstation name\n"
 		"\t-s\tDo not print event source\n"
 		"\t-y\tDo not print event type\n"
+		"\t-c\tDo not print event category\n"
 		"\t-a\tOutput event-specific data as ASCII\n"
 		"\t-h\tOutput event-specific data in hex format\n"
 		"\t-n\tFormat event using newline separators\n"
@@ -98,7 +100,8 @@ main(int argc, char *argv[])
 			break;
 		case 'r': o_direction = EVENTLOG_BACKWARDS_READ; break;
 		case 'u': o_user = 0; break;
-		case 'c': o_computer = 0; break;
+		case 'w': o_computer = 0; break;
+		case 'c': o_category = 0; break;
 		case 's': o_source = 0; break;
 		case 'y': o_type = 0; break;
 		case 'a': o_ascii = 1; break;
@@ -125,11 +128,11 @@ static char *
 evtype(int type)
 {
 	switch (type) {
-	case EVENTLOG_ERROR_TYPE: return "error";
-	case EVENTLOG_WARNING_TYPE: return "warning";
-	case EVENTLOG_INFORMATION_TYPE: return "information";
-	case EVENTLOG_AUDIT_SUCCESS: return "success";
-	case EVENTLOG_AUDIT_FAILURE: return "failure";
+	case EVENTLOG_ERROR_TYPE: return "Error";
+	case EVENTLOG_WARNING_TYPE: return "Warning";
+	case EVENTLOG_INFORMATION_TYPE: return "Information";
+	case EVENTLOG_AUDIT_SUCCESS: return "Success";
+	case EVENTLOG_AUDIT_FAILURE: return "Failure";
 	}
 }
 
@@ -225,11 +228,27 @@ get_regentry(HANDLE rh, char *name, char *result)
 }
 
 static void
+print_oneline(char *outmsg)
+{
+	char *p;
+
+	for (p = outmsg; *p; p++)
+		switch (*p) {
+		case '\r': 
+			break;
+		case '\n': 
+			if (p[1])
+				putchar(' ');
+			break;
+		default: putchar(*p);
+		}
+}
+
+static void
 print_msg(EVENTLOGRECORD *pelr)
 {
 	char key[1024];
 	char msgfile[1024];
-	char catfile[1024];
 	char paramfile[1024];
 	int ret;
 	HANDLE rh;
@@ -252,15 +271,28 @@ print_msg(EVENTLOGRECORD *pelr)
 		RegCloseKey(rh);
 		return;
 	}
-	RegCloseKey(rh);
 	/* Event source */
 	if (o_source)
 		printf("%s: ", (LPSTR) ((LPBYTE) pelr + sizeof(EVENTLOGRECORD)));
+	/* Category */
+	if (o_category) {
+		char *category;
+		char catfile[1024];
+
+		if (pelr->EventCategory == 0)
+			printf("-: ");
+		else if (get_regentry(rh, "CategoryMessageFile", catfile) &&
+			 (category = get_message(catfile, pelr->EventCategory, NULL))) {
+			print_oneline(category);
+			printf(": ");
+			LocalFree(category);
+		} else
+			wperror("Event category", GetLastError());
+	}
 	/* Event type */
 	if (o_type)
 		printf("%s: ", evtype(pelr->EventType));
-	/* Category is seldom used: */
-	printf("CAT: %d: ", pelr->EventCategory);
+	RegCloseKey(rh);
 	print_uname(pelr);
 	/*
 	 * Some message file specs use a ; separated path.
@@ -273,12 +305,7 @@ print_msg(EVENTLOGRECORD *pelr)
 	if (o_newline)
 		printf("\n%s", outmsg);
 	else
-		for (p = outmsg; *p; p++)
-			switch (*p) {
-			case '\r': break;
-			case '\n': putchar(' '); break;
-			default: putchar(*p);
-			}
+		print_oneline(outmsg);
 	putchar('\n');
 	LocalFree(outmsg);
 }
