@@ -11,7 +11,7 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.5 2002-01-03 13:01:10 dds Exp $
+.\" $Id: winclip.1,v 1.6 2002-01-03 13:57:15 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
@@ -81,7 +81,7 @@ In \fIUSENIX 2000 Technical Conference Proceedings\fP, San Diego, CA, USA,
 June 2000, USENIX Association.
 
 .SH AUTHOR
-(C) Copyright 1994-2001 Diomidis Spinellis.  All rights reserved.
+(C) Copyright 1994-2002 Diomidis Spinellis.  All rights reserved.
 .LP
 Permission to use, copy, and distribute this software and its
 documentation for any purpose and without fee is hereby granted,
@@ -94,3 +94,8 @@ WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .SH BUGS
 Should handle more clipboard content types.
+.LP
+\fIWinclip\fP may not work as expected if the code page of the console
+window it is running is different from the code page of the clipboard
+data or the code page it is specified to use.
+You can check and change a console code page using the \fIchcp\fP command.
