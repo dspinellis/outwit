@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.6 2002-07-10 11:14:16 dds Exp $
+ * $Id: readlog.c,v 1.7 2002-07-10 11:20:16 dds Exp $
  *
  */
 
@@ -32,6 +32,7 @@ static char *time_fmt = "%b %d %H:%M:%S";
 static char *server = NULL;
 static char *source = "System";
 static int o_direction = EVENTLOG_FORWARDS_READ;
+static int o_id = 0;
 static int o_user = 1;
 static int o_computer = 1;
 static int o_source = 1;
@@ -45,7 +46,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.6 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.7 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -58,10 +59,11 @@ usage(char *fname)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: %s [-t fmt] [-v server] [-ruwsycahn] [source]\n"
+		"usage: %s [-t fmt] [-v server] [-riuwsycahn] [source]\n"
 		"\t-t fmt\tTime format string (strftime)\n"
 		"\t-v server\tServer name\n"
 		"\t-r\tPrint entries in reverse order\n"
+		"\t-i\tOutput decimal event id\n"
 		"\t-u\tDo not print user information\n"
 		"\t-w\tDo not print workstation name\n"
 		"\t-s\tDo not print event source\n"
@@ -86,7 +88,7 @@ main(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "t:v:rucsyahn")) != EOF)
+	while ((c = getopt(argc, argv, "t:v:riucsyahn")) != EOF)
 		switch (c) {
 		case 't':
 			if (!optarg || optarg[1])
@@ -107,6 +109,7 @@ main(int argc, char *argv[])
 		case 'a': o_ascii = 1; break;
 		case 'h': o_hex = 1; break;
 		case 'n': o_newline = 1; break;
+		case 'i': o_id = 1; break;
 		case '?':
 			usage(argv[0]);
 		}
@@ -306,9 +309,11 @@ print_msg(EVENTLOGRECORD *pelr)
 	if (regok)
 		RegCloseKey(rh);
 	else {
-		printf("(no error message available)\n");
+		printf("Code %u (no error message available)\n", pelr->EventID);
 		return;
 	}
+	if (o_id)
+		printf("%d: ", pelr->EventID & 0xffff);
 	for (i = 0, p = (char *)((LPBYTE) pelr + pelr->StringOffset); i < pelr->NumStrings; p += strlen(argv[i]) + 1, i++)
 		argv[i] = p;
 	if ((outmsg = get_message(msgfile, pelr->EventID, argv)) == NULL)
