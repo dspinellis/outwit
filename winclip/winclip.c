@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.18 2004-02-27 17:10:34 dds Exp $
+ * $Id: winclip.c,v 1.19 2004-03-01 14:18:29 dds Exp $
  *
  */
 
@@ -88,7 +88,7 @@ void
 usage(void)
 {
 	fprintf(stderr,
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.18 $\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.19 $\n"
 		"(C) Copyright 1994-2004 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -124,7 +124,7 @@ main(int argc, char *argv[])
 	int c;
 	FILE *iofile;		/* File to use for I/O */
 	char *fname;		/* and its file name */
-	int big_endian;		/* True if big-endian BOM */
+	int big_endian = 0;	/* True if big-endian BOM */
 
 	while ((c = getopt(argc, argv, "uwcpmb")) != EOF)
 		switch (c) {
@@ -354,6 +354,7 @@ main(int argc, char *argv[])
 		}
 		memcpy(hglb, b, total);
 		((char *)hglb)[total] = '\0';
+		((char *)hglb)[total + 1] = '\0';
 		SetClipboardData(textfmt, hglb);
 		CloseClipboard();
 		if (ferror(iofile)) {
