@@ -11,7 +11,7 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.9 2004-02-27 17:12:25 dds Exp $
+.\" $Id: winclip.1,v 1.10 2004-03-04 14:23:07 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
@@ -114,3 +114,12 @@ Should handle more clipboard content types.
 window it is running is different from the code page of the clipboard
 data or the code page it is specified to use.
 You can check and change a console code page using the \fIchcp\fP command.
+.LP
+In operations involving 8-bit (non-Unicde) data,
+the input locale (that's right, the active keyboard translation)
+in effect at the time the text is placed in the clipboard
+determines the character set associated with the clipboard data.
+Therefore,
+if you want to associate a Tamil or Greek code page with the
+clipboard data, ensure that you have correctly set the active
+keyboard type at the time you copy the data.
