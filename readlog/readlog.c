@@ -3,18 +3,18 @@
  * readlog - Windows event log text-based access
  *
  * (C) Copyright 2002 Diomidis Spinellis
- * 
+ *
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
  * provided that the above copyright notice appear in all copies and that
  * both that copyright notice and this permission notice appear in
  * supporting documentation.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.13 2004-11-19 14:43:26 dds Exp $
+ * $Id: readlog.c,v 1.14 2004-11-19 14:46:43 dds Exp $
  *
  */
 
@@ -46,8 +46,8 @@ static int o_recno = 0;
 static void
 usage(char *fname)
 {
-	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.13 $\n"
+	fprintf(stderr,
+		"readlog - Windows event log text-based access.  $Revision: 1.14 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -145,16 +145,16 @@ wperror(char *s, LONG err)
 {
 	LPVOID lpMsgBuf;
 
-	FormatMessage( 
-	    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-	    FORMAT_MESSAGE_FROM_SYSTEM | 
+	FormatMessage(
+	    FORMAT_MESSAGE_ALLOCATE_BUFFER |
+	    FORMAT_MESSAGE_FROM_SYSTEM |
 	    FORMAT_MESSAGE_IGNORE_INSERTS,
 	    NULL,
 	    err,		// GetLastError() does not seem to work reliably
 	    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 	    (LPTSTR) &lpMsgBuf,
 	    0,
-	    NULL 
+	    NULL
 	);
 	fprintf(stderr, "%s: %s", s, lpMsgBuf);
 	LocalFree(lpMsgBuf);
@@ -164,7 +164,7 @@ static void
 print_time(EVENTLOGRECORD *pelr)
 {
 	char buff[512];
-	time_t *t;
+	struct tm *t;
 	static time_t y2038 = (time_t)0x7fffffff;
 
 	if (!*time_fmt)
@@ -190,7 +190,7 @@ print_uname(EVENTLOGRECORD *pelr)
 
 	if (!o_user || pelr->UserSidLength == 0)
 		return;
-	// Point to the SID. 
+	// Point to the SID.
 	lpSid = (PSID) ((LPBYTE) pelr + pelr->UserSidOffset);
 	if (LookupAccountSid(NULL, lpSid, szName, &cbName, szDomain, &cbDomain, &snu))
 		printf("%s\\%s: ", szDomain, szName);
@@ -211,7 +211,7 @@ get_message(char *msgfile, DWORD id, char *argv[])
 		if ((mh = LoadLibraryEx(msgfile, NULL, LOAD_LIBRARY_AS_DATAFILE)) == NULL)
 			break;
 		if (FormatMessage(
-		    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+		    FORMAT_MESSAGE_ALLOCATE_BUFFER |
 		    FORMAT_MESSAGE_FROM_HMODULE |
 		    FORMAT_MESSAGE_ARGUMENT_ARRAY,
 		    mh, id, 0, (LPTSTR)&outmsg, 1024, argv)) {
@@ -259,9 +259,9 @@ print_oneline(char *outmsg)
 
 	for (p = outmsg; *p; p++)
 		switch (*p) {
-		case '\r': 
+		case '\r':
 			break;
-		case '\n': 
+		case '\n':
 			if (p[1])
 				putchar(' ');
 			break;
@@ -445,14 +445,14 @@ print_log(char *source)
 	bBuffer = malloc(dwSize = 8192);
 again:
 	pevlr = (EVENTLOGRECORD *)bBuffer;
-	while (ReadEventLog(h,	// event log handle 
-			    o_direction |	// reads forward 
-			    EVENTLOG_SEQUENTIAL_READ,	// sequential read 
-			    0,	// ignored for sequential reads 
-			    pevlr,	// pointer to buffer 
-			    dwSize,	// size of buffer 
-			    &dwRead,	// number of bytes read 
-			    &dwNeeded))	// bytes in next record 
+	while (ReadEventLog(h,	// event log handle
+			    o_direction |	// reads forward
+			    EVENTLOG_SEQUENTIAL_READ,	// sequential read
+			    0,	// ignored for sequential reads
+			    pevlr,	// pointer to buffer
+			    dwSize,	// size of buffer
+			    &dwRead,	// number of bytes read
+			    &dwNeeded))	// bytes in next record
 	{
 		while (dwRead > 0) {
 			print_msg(pevlr, source);
