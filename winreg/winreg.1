@@ -1,0 +1,139 @@
+.TH WINREG 1 "11 July 2002"
+.\" (C) Copyright 1999-2002 Diomidis Spinellis.  All rights reserved.
+.\" 
+.\" Permission to use, copy, and distribute this software and its
+.\" documentation for any purpose and without fee for noncommercial use
+.\" is hereby granted, provided that the above copyright notice appear in
+.\" all copies and that both that copyright notice and this permission notice
+.\" appear in supporting documentation.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" $Id: winreg.1,v 1.1 2003-02-28 18:28:33 dds Exp $
+.\"
+.SH NAME
+winreg \- text-based access to the Windows registry
+.SH SYNOPSIS
+\fBwinreg\fP 
+[\fB\-F\fP \fIFS\fP]
+[\fB\-ntvc\fP]
+[\fIkey\fP]
+.SH DESCRIPTION
+\fIWinreg\fP 
+provides text-based access to the Windows registry.
+Running \fIwinreg\fP with a registry key specified as part of its
+invocation will result in all the registry tree from that point downwards
+to be printed on its standard output.
+By default for every registry key \fIwinreg\fP will print its name, type,
+and value.
+When \fIwinreg\fP is run without specifying a registry key it will read
+registry data formatted in the same way as its default output format and
+set (update or create) the corresponding registry values.
+.LP
+The following lines describe the default registry data format read and written
+by \fIwinreg\fP for each defined registry data type.
+\fIWinreg\fP will not process data types other than the ones described.
+.IP "REG_BINARY"
+\fIWinreg\fP will print the word BINARY followed by 
+the data bytes as character-separated two digit hexadecimal values.
+.IP "REG_DWORD"
+\fIWinreg\fP will print the word DWORD followed by 
+the value as using eight hexadecimal digits.
+.IP "REG_SZ"
+\fIWinreg\fP will print the word SZ followed by 
+the value as a string with escape codes used for non-printable characters.
+.IP "REG_MULTI_SZ"
+\fIWinreg\fP will print the word MULTI_SZ followed by 
+the value as a string with escape codes used for non-printable characters.
+.IP "REG_EXPAND_SZ"
+\fIWinreg\fP will print the word EXPAND_SZ followed by 
+the value as a string with escape codes used for non-printable characters.
+.IP "REG_NONE"
+\fIWinreg\fP will print the word NONE without any trailing data.
+A field separator will be printed.
+.IP "REG_LINK"
+\fIWinreg\fP will print the word LINK followed by 
+the data bytes as character-separated two digit hexadecimal values.
+.IP "REG_RESOURCE_LIST"
+\fIWinreg\fP will print the word RESOURCE_LIST followed by 
+the data bytes as character-separated two digit hexadecimal values.
+.IP "REG_RESOURCE_REQUIREMENTS_LIST"
+\fIWinreg\fP will print the word RESOURCE_REQUIREMENTS_LIST followed by 
+the data bytes as character-separated two digit hexadecimal values.
+.IP "REG_FULL_RESOURCE_DESCRIPTOR"
+\fIWinreg\fP will print the word FULL_RESOURCE_DESCRIPTOR followed by 
+the data bytes as character-separated two digit hexadecimal values.
+.LP
+When printing string values \\\fIcharacter\fP escape codes are used
+for the characters \\, \\a, \\b, \\f, \\t, \\r, \\n, \\v, \\0 representing
+the corresponding values as defined by the C programming language.
+All other non-printable characters (as defined by the C \fIisprint\fP
+function) are represented using the sequence \fI\\x\fP followed by
+two digit hexadecimals.
+.LP
+A commonly used idiom involves processing Windows registry data as
+the output of \fIwinreg\fP using Unix tools like \fIsed\fP and \fIawk\fP
+and redirecting their output back to the registry via \fIwinreg\fP.
+
+.SH OPTIONS
+.IP "\fB\-F\fP \fBFS\fP"
+Specify the field separator used to delimit fields (registry key name,
+type, value) on output.
+The default field separator is a tab.
+.IP "\fB\-n\fP"
+Do not print key names.
+.IP "\fB\-t\fP"
+Do not print key types.
+.IP "\fB\-v\fP"
+Do not print key values.
+.IP "\fB\-d\fP"
+Output DWORD and binary data of 1, 2, and 4 bytes in decimal.
+This can be used to extract performance data (found under HKEY_PERFORMANCE_DATA)
+in a format that can be used by other analysis tools.
+Decimal output can not be parsed-back for setting registry values.
+.IP "\fB\-c\fP"
+Check input by parsing it and print any errors found. 
+No registry keys will be created or modified.
+
+.SH EXAMPLE
+winreg -nt HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\ComputerName\\ComputerName
+.br
+will display a machine's name.
+.LP
+winreg HKEY_CURRENT_USER |
+sed -n 's,C:/home,D:/home,gp' |
+winreg
+.br
+Change all user registry references from c:/home to d:/home.
+.SH "SEE ALSO"
+D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
+In \fIUSENIX 2000 Technical Conference Proceedings\fP, pages 149-158, San Diego, CA, USA,
+June 2000, USENIX Association.
+.br
+Microsoft Corporation.
+\fIMicrosoft Windows NT Server 4.0 Resource Kit\fP.
+Microsoft Press.
+.br
+Ron Petrusha and Andrew Schulman.
+\fIInside the Windows 95 Registry\fP.
+O'Reilly & Associates.
+
+.SH AUTHOR
+(C) Copyright 1999, 2000 Diomidis Spinellis.  All rights reserved.
+.LP
+Permission to use, copy, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation.
+.LP
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.SH BUGS
+Although reasonable care has been taken to make \fIwinreg\fP work
+with many possible types of registry data, note that incorrect
+operation by \fIwinreg\fP or inappropriate registry data manipulations
+can render a machine unusable.
