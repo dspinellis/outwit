@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.7 2002-07-10 11:20:16 dds Exp $
+ * $Id: readlog.c,v 1.8 2002-07-10 12:13:11 dds Exp $
  *
  */
 
@@ -46,7 +46,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.7 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.8 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -263,7 +263,7 @@ print_msg(EVENTLOGRECORD *pelr)
 	char paramfile[1024];
 	int ret;
 	HANDLE rh;
-	char *outmsg;
+	char *outmsg, *msg;
 	char *argv[1024];
 	int i;
 	char *p;
@@ -294,8 +294,8 @@ print_msg(EVENTLOGRECORD *pelr)
 
 		if (!regok || pelr->EventCategory == 0)
 			printf("-: ");
-		else if (get_regentry(rh, "CategoryMessageFile", catfile) &&
-			 (category = get_message(catfile, pelr->EventCategory, NULL))) {
+		else if (get_regentry(rh, "CategoryMessageFile", catfile)) {
+			category = get_message(catfile, pelr->EventCategory, NULL);
 			print_oneline(category);
 			printf(": ");
 			LocalFree(category);
@@ -306,24 +306,44 @@ print_msg(EVENTLOGRECORD *pelr)
 	if (o_type)
 		printf("%s: ", evtype(pelr->EventType));
 	print_uname(pelr);
-	if (regok)
-		RegCloseKey(rh);
-	else {
-		printf("Code %u (no error message available)\n", pelr->EventID);
+	if (!regok){
+		printf("Code %d (no error message available)\n", pelr->EventID & 0xffff);
 		return;
 	}
 	if (o_id)
 		printf("%d: ", pelr->EventID & 0xffff);
 	for (i = 0, p = (char *)((LPBYTE) pelr + pelr->StringOffset); i < pelr->NumStrings; p += strlen(argv[i]) + 1, i++)
 		argv[i] = p;
-	if ((outmsg = get_message(msgfile, pelr->EventID, argv)) == NULL)
-		return;
+	outmsg = get_message(msgfile, pelr->EventID, argv);
+	if (get_regentry(rh, "ParameterMessageFile", paramfile)) {
+		char *src, *dst;
+
+		msg = malloc(strlen(outmsg) + 1);
+		for (src = outmsg, dst = msg; *src;)
+			if (src[0] == '%' && src[1] == '%' && isdigit(src[2])) {
+				int code;
+				char *param;
+
+				code = strtoul(src + 2, &src, 10);
+				param = get_message(paramfile, code, NULL);
+				*dst = 0;
+				msg = realloc(msg, strlen(msg) + strlen(outmsg) + strlen(param) + 1);
+				strcat(msg, param);
+				dst = msg + strlen(msg);
+			} else
+				*dst++ = *src++;
+		*dst = 0;
+	} else
+		msg = outmsg;
+	RegCloseKey(rh);
 	if (o_newline)
-		printf("\n%s", outmsg);
+		printf("\n%s", msg);
 	else
-		print_oneline(outmsg);
+		print_oneline(msg);
 	putchar('\n');
 	LocalFree(outmsg);
+	if (msg != outmsg)
+		free(msg);
 }
 
 static void
