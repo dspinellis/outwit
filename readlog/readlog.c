@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.8 2002-07-10 12:13:11 dds Exp $
+ * $Id: readlog.c,v 1.9 2002-07-10 12:33:43 dds Exp $
  *
  */
 
@@ -39,14 +39,15 @@ static int o_source = 1;
 static int o_type = 1;
 static int o_category = 1;
 static int o_ascii = 0;
-static int o_hex = 0;
+static int o_byte = 0;
+static int o_dword = 0;
 static int o_newline = 0;
 
 static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.8 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.9 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -70,7 +71,8 @@ usage(char *fname)
 		"\t-y\tDo not print event type\n"
 		"\t-c\tDo not print event category\n"
 		"\t-a\tOutput event-specific data as ASCII\n"
-		"\t-h\tOutput event-specific data in hex format\n"
+		"\t-b\tOutput event-specific data as hex bytes\n"
+		"\t-d\tOutput event-specific data as hex doublewords\n"
 		"\t-n\tFormat event using newline separators\n"
 		"\t\tDefault source is System,\n"
 		"\t\tsource can be System, Application, Security or a custom name\n"
@@ -88,7 +90,7 @@ main(int argc, char *argv[])
 {
 	int c;
 
-	while ((c = getopt(argc, argv, "t:v:riucsyahn")) != EOF)
+	while ((c = getopt(argc, argv, "t:v:riucsyabdn")) != EOF)
 		switch (c) {
 		case 't':
 			if (!optarg || optarg[1])
@@ -107,7 +109,8 @@ main(int argc, char *argv[])
 		case 's': o_source = 0; break;
 		case 'y': o_type = 0; break;
 		case 'a': o_ascii = 1; break;
-		case 'h': o_hex = 1; break;
+		case 'b': o_byte = 1; break;
+		case 'd': o_dword = 1; break;
 		case 'n': o_newline = 1; break;
 		case 'i': o_id = 1; break;
 		case '?':
@@ -256,6 +259,61 @@ print_oneline(char *outmsg)
 }
 
 static void
+print_data(unsigned char *data, unsigned len)
+{
+	int i;
+	unsigned c;
+
+	if (o_ascii) {
+		putchar('[');
+		for (i = 0; i < len; i++) {
+			c = data[i];
+			if (c == '\\')
+				printf("\\\\");
+			else if (isprint(c))
+				putchar(c);
+			else
+				switch (c) {
+				case '\a': printf("\\a"); break;
+				case '\b': printf("\\b"); break;
+				case '\f': printf("\\f"); break;
+				case '\t': printf("\\t"); break;
+				case '\r': printf("\\r"); break;
+				case '\n': printf("\\n"); break;
+				case '\v': printf("\\v"); break;
+				case '\0': printf("\\0"); break;
+				default: printf("\\x%02x", c); break;
+				}
+		}
+		putchar(']');
+		if (o_newline)
+			putchar('\n');
+	}
+	if (o_byte) {
+		putchar('[');
+		for (i = 0; i < len; i++) {
+			printf("%02x", data[i]);
+			if (i < len - 1)
+				putchar(' ');
+		}
+		putchar(']');
+		if (o_newline)
+			putchar('\n');
+	}
+	if (o_dword) {
+		putchar('[');
+		for (i = 0; i < len / 4; i++) {
+			printf("%08x", ((DWORD *)data)[i]);
+			if (i < len / 4 - 1)
+				putchar(' ');
+		}
+		putchar(']');
+		if (o_newline)
+			putchar('\n');
+	}
+}
+
+static void
 print_msg(EVENTLOGRECORD *pelr)
 {
 	char key[1024];
@@ -306,12 +364,14 @@ print_msg(EVENTLOGRECORD *pelr)
 	if (o_type)
 		printf("%s: ", evtype(pelr->EventType));
 	print_uname(pelr);
-	if (!regok){
-		printf("Code %d (no error message available)\n", pelr->EventID & 0xffff);
-		return;
-	}
 	if (o_id)
 		printf("%d: ", pelr->EventID & 0xffff);
+	if (!regok){
+		printf("Code %d (no error message available)", pelr->EventID & 0xffff);
+		print_data((LPBYTE)pelr + pelr->DataOffset, pelr->DataLength);
+		putchar('\n');
+		return;
+	}
 	for (i = 0, p = (char *)((LPBYTE) pelr + pelr->StringOffset); i < pelr->NumStrings; p += strlen(argv[i]) + 1, i++)
 		argv[i] = p;
 	outmsg = get_message(msgfile, pelr->EventID, argv);
@@ -340,6 +400,7 @@ print_msg(EVENTLOGRECORD *pelr)
 		printf("\n%s", msg);
 	else
 		print_oneline(msg);
+	print_data((LPBYTE)pelr + pelr->DataOffset, pelr->DataLength);
 	putchar('\n');
 	LocalFree(outmsg);
 	if (msg != outmsg)
