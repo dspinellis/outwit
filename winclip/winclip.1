@@ -1,5 +1,5 @@
-.TH WINCLIP 1 "27 February 2004"
-.\" (C) Copyright 1998-2004 Diomidis Spinellis.  All rights reserved.
+.TH WINCLIP 1 "10 February 2005"
+.\" (C) Copyright 1998-2005 Diomidis Spinellis.  All rights reserved.
 .\"
 .\" Permission to use, copy, and distribute this software and its
 .\" documentation for any purpose and without fee is hereby granted,
@@ -11,14 +11,17 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.10 2004-03-04 14:23:07 dds Exp $
+.\" $Id: winclip.1,v 1.11 2005-02-10 15:10:26 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
 .SH SYNOPSIS
 \fBwinclip\fP
+[\fB\-h\fP|\fB\-v\fP]
 [\fB\-w\fP|\fB\-u\fP\fB\-m\fP]
 [\fB\-b\fP]
+[\fB\-l\fP \fIlang\fP]
+[\fB\-s\fP \fIsublang\fP]
 \fB-c\fP|\fB-p\fP
 [\fIfile\fP]
 .SH DESCRIPTION
@@ -78,6 +81,30 @@ output format.
 When reading data for the clipboard, automatically detect
 Unicode data, and set the encoding and endianess, if a byte-order-mark is
 detected.
+.IP "\fB\-l\fP \fBlang\fP"
+Specify the language identifier for the text to be copied into
+the clipboard.
+The default value is \fINeutral\fP.
+The identifier is case insensitive.
+Specify the identifier \fIHelp\fP to obtain a list of supported
+language settings.
+.IP "\fB\-s\fP \fBsublang\fP"
+Specify the sub-language identifier for the text to be copied into
+the clipboard.
+The default value is \fIDefault\fP.
+The identifier is case insensitive.
+Specify the identifier \fIHelp\fP to obtain a list of supported
+sublanguage settings.
+Specifying a sublanguage setting without the corresponding language setting
+is probably not a good idea.
+The combination of the default language and sublanguage identifiers in
+effect result in the clipboard data getting marked as belonging to the
+user default language.
+.IP "\fB\-v\fP"
+Print the program's version on the standard output and exit.
+.IP "\fB\-h\fP"
+Print a short help text on the program's operation on the standard output
+and exit.
 .SH EXAMPLE
 dir /b | winclip -c
 .br
@@ -90,13 +117,19 @@ Saves the Windows clipboard to file.txt.
 winclip -p | perl -pe "tr/[A-Z]/[a-z]/" | winclip -c
 .br
 Converts the contents of the Windows clipboard to lowercase.
+.LP
+winclip -c -l Portuguese -s Portuguese_Brazilian file.txt
+.br
+Copied the file file.txt to the Windows clipboard.
+The clipboard's contents are marked to contain text in the language
+Portuguese and sublanguage Portuguese_Brazilian.
 .SH "SEE ALSO"
 D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
 In \fIUSENIX 2000 Technical Conference Proceedings\fP, San Diego, CA, USA,
 June 2000, USENIX Association.
 
 .SH AUTHOR
-(C) Copyright 1994-2004 Diomidis Spinellis.  All rights reserved.
+(C) Copyright 1994-2005 Diomidis Spinellis.  All rights reserved.
 .LP
 Permission to use, copy, and distribute this software and its
 documentation for any purpose and without fee is hereby granted,

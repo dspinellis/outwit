@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.19 2004-03-01 14:18:29 dds Exp $
+ * $Id: winclip.c,v 1.20 2005-02-10 15:10:26 dds Exp $
  *
  */
 
@@ -34,6 +34,9 @@ static int bom = 0;
 static int multibyte = 0;
 
 
+/* Program name */
+char *argv0;
+
 static void
 error(char *s)
 {
@@ -51,7 +54,7 @@ error(char *s)
 	    0,
 	    NULL
 	);
-	fprintf(stderr, "%s: %s\n", s, lpMsgBuf);
+	fprintf(stderr, "%s: %s: %s\n", argv0, s, lpMsgBuf);
 	LocalFree(lpMsgBuf);
 	exit(1);
 }
@@ -67,7 +70,7 @@ unicode_fputs(const wchar_t *str, FILE *iofile)
 		char *mbs = malloc(blen);
 		if (mbs == NULL) {
 			CloseClipboard();
-			fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", blen);
+			fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, blen);
 			exit(1);
 		}
 		if (WideCharToMultiByte(CP_UTF8, 0, str, wlen, mbs, blen, NULL, NULL) == 0) {
@@ -84,12 +87,40 @@ unicode_fputs(const wchar_t *str, FILE *iofile)
 	}
 }
 
+static char *usage_string =
+	"usage: %s [-v|h] [-w|u|m] [-l lang] [-s sublang] [-b] -c|-p [filename]\n";
+
+void
+help(void)
+{
+	printf(usage_string, argv0);
+	printf( "\t-v Display version and copyright information\n"
+		"\t-h Display this help message\n"
+		"\t-c Copy to clipboard\n"
+		"\t-p Paste from clipboard\n"
+		"\t-u Data to be copied / pasted is in Unicode format\n"
+		"\t-m Unicode data is multi-byte\n"
+		"\t-b Include BOM with Unicode data\n"
+		"\t-w Data is in the Windows code page (OEM code page is the default)\n"
+		"\t-l Specify the language for the data to be copied\n"
+		"\t-s Specify the sublanguage for the data to be copied\n"
+	);
+	exit(0);
+}
+
 void
 usage(void)
 {
-	fprintf(stderr,
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.19 $\n"
-		"(C) Copyright 1994-2004 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+	fprintf(stderr, usage_string, argv0);
+	fprintf(stderr, "Run %s -h for help\n", argv0);
+	exit(1);
+}
+
+void
+version(void)
+{
+	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.20 $\n\n", argv0);
+	printf( "(C) Copyright 1994-2005 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -100,8 +131,39 @@ usage(void)
 		"THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED\n"
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+	);
+	exit(0);
+}
 
-		"usage: winclip [-w|u|m] [-b] -c|-p [filename]\n");
+struct s_keyval {
+	char *name;
+	int val;
+};
+
+#include "lang.h"
+
+/*
+ * Return a value for the passed key.
+ * If the value is not found, print the valid keys and exit.
+ */
+int
+get_val(const struct s_keyval *kv, int len, const char *key)
+{
+	int i, olen = 0;
+
+	for (i = 0; i < len; i++)
+		if (stricmp(kv[i].name, key) == 0)
+			return (kv[i].val);
+	fprintf(stderr, "%s: invalid key [%s].  Valid keys are:\n", argv0, key);
+	for (i = 0; i < len; i++) {
+		fprintf(stderr, "%s", kv[i].name);
+		if ((olen += strlen(kv[i].name)) > 60) {
+			fputc('\n', stderr);
+			olen = 0;
+		} else
+			fputc(' ', stderr);
+	}
+	fputc('\n', stderr);
 	exit(1);
 }
 
@@ -125,8 +187,11 @@ main(int argc, char *argv[])
 	FILE *iofile;		/* File to use for I/O */
 	char *fname;		/* and its file name */
 	int big_endian = 0;	/* True if big-endian BOM */
+	LCID *plcid;		/* Locale id pointer */
+	int langid = LANG_NEUTRAL, sublangid = SUBLANG_DEFAULT;
 
-	while ((c = getopt(argc, argv, "uwcpmb")) != EOF)
+	argv0 = argv[0];
+	while ((c = getopt(argc, argv, "vhuwcpmbl:s:")) != EOF)
 		switch (c) {
 		case 'b':
 			bom = 1;
@@ -156,6 +221,22 @@ main(int argc, char *argv[])
 			if (operation != O_NONE)
 				usage();
 			operation = O_PASTE;
+			break;
+		case 'l':
+			if (!optarg)
+				usage();
+			langid = get_val(lang, sizeof(lang) / sizeof(*lang), optarg);
+			break;
+		case 's':
+			if (!optarg)
+				usage();
+			sublangid = get_val(sublang, sizeof(sublang) / sizeof(*sublang), optarg);
+			break;
+		case 'v':
+			version();
+			break;
+		case 'h':
+			help();
 			break;
 		case '?':
 			usage();
@@ -283,7 +364,7 @@ main(int argc, char *argv[])
 		bp = b = malloc(remsiz = bsiz = CHUNK);
 		if (b == NULL) {
 			CloseClipboard();
-			fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", bsiz);
+			fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, bsiz);
 			return (1);
 		}
 		total = 0;
@@ -294,7 +375,7 @@ main(int argc, char *argv[])
 				b = realloc(b, bsiz *= 2);
 				if (b == NULL) {
 					CloseClipboard();
-					fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", bsiz);
+					fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, bsiz);
 					return (1);
 				}
 				remsiz = bsiz - total;
@@ -325,7 +406,7 @@ main(int argc, char *argv[])
 			int ret;
 
 			if (b2 == NULL) {
-				fprintf(stderr, "winclip: Unable to allocate %d bytes of memory\n", b2siz);
+				fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, b2siz);
 				CloseClipboard();
 				return (1);
 			}
@@ -356,6 +437,15 @@ main(int argc, char *argv[])
 		((char *)hglb)[total] = '\0';
 		((char *)hglb)[total + 1] = '\0';
 		SetClipboardData(textfmt, hglb);
+		// Now set the locale
+		hglb = GlobalAlloc(GMEM_DDESHARE | GMEM_ZEROINIT, sizeof(LCID));
+		if (hglb == NULL) {
+			CloseClipboard();
+			error("Unable to allocate clipboard memory");
+		}
+		plcid = (LCID*)GlobalLock(hglb);
+		*plcid = MAKELCID(MAKELANGID(langid, sublangid), SORT_DEFAULT);
+		SetClipboardData(CF_LOCALE, hglb);
 		CloseClipboard();
 		if (ferror(iofile)) {
 			perror(fname);
@@ -368,3 +458,4 @@ main(int argc, char *argv[])
 	}
 	return (0);
 }
+
