@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: odbc.c,v 1.2 2003-11-14 18:27:44 dds Exp $
+ * $Id: odbc.c,v 1.3 2003-12-02 08:17:36 dds Exp $
  *
  */
 
@@ -45,7 +45,7 @@ void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"odbc - select data from relational databases.  $Revision: 1.2 $\n"
+		"odbc - select data from relational databases.  $Revision: 1.3 $\n"
 		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -72,7 +72,7 @@ usage(char *fname)
 
 /* Report an SQL error, through the status records */
 void
-report_error(SQLHDBC hdbc)
+report_error(SQLSMALLINT handletype, SQLHANDLE handle)
 {
 	SQLSMALLINT	i = 1;
 	SQLCHAR         SqlState[6], Msg[SQL_MAX_MESSAGE_LENGTH];
@@ -80,7 +80,7 @@ report_error(SQLHDBC hdbc)
 	SQLSMALLINT     MsgLen;
 	RETCODE         retcode;
 
-	for (i = 1; (retcode = SQLGetDiagRec(SQL_HANDLE_DBC, hdbc, i, SqlState, 
+	for (i = 1; (retcode = SQLGetDiagRec(handletype, handle, i, SqlState, 
 	    &NativeError, Msg, sizeof(Msg), &MsgLen)) != SQL_NO_DATA; i++)
 		fprintf(stderr, "SQL Error State: %s, Native Error Code: %lX, ODBC Error: %s", 
 			(LPSTR)SqlState, NativeError, (LPSTR)Msg); 
@@ -141,16 +141,17 @@ main(int argc, char *argv[])
 	retcode = SQLAllocHandle(SQL_HANDLE_ENV, NULL, &henv);
 	retcode = SQLSetEnvAttr(henv, SQL_ATTR_ODBC_VERSION, (SQLPOINTER) SQL_OV_ODBC3, SQL_IS_INTEGER);
 	retcode = SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc1);
-	retcode = SQLConnect(hdbc1, argv[optind], SQL_NTS, uid, SQL_NTS, auth, SQL_NTS);
+	retcode = SQLDriverConnect(hdbc1, NULL, argv[optind], SQL_NTS, 0, 0, 0, SQL_DRIVER_NOPROMPT);
+
 	if ((retcode == SQL_SUCCESS_WITH_INFO) || (retcode == SQL_ERROR))
-		report_error(hdbc1);
+		report_error(SQL_HANDLE_DBC, hdbc1);
 
 	retcode = SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1);
 
 	retcode = SQLExecDirect(hstmt1, (UCHAR *) argv[optind + 1], SQL_NTS);
 
 	if ((retcode == SQL_SUCCESS_WITH_INFO) || (retcode == SQL_ERROR))
-		report_error(hdbc1);
+		report_error(SQL_HANDLE_STMT, hstmt1);
 	
 	if ((retcode == SQL_SUCCESS) || (retcode == SQL_SUCCESS_WITH_INFO)) {
 		retcode = SQLNumResultCols(hstmt1, &numcol);
@@ -184,7 +185,7 @@ main(int argc, char *argv[])
 		for (;;) {
 			retcode = SQLFetch(hstmt1);
 			if (retcode == SQL_ERROR || retcode == SQL_SUCCESS_WITH_INFO)
-				report_error(hdbc1);
+				report_error(SQL_HANDLE_STMT, hstmt1);
 			if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO) {
 				for (i = 1; i <= numcol; i++) {
 					if (coldata[i].io_len != SQL_NULL_DATA)
