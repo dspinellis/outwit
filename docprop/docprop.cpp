@@ -1,152 +1,158 @@
+/*
+ * Print the properties of an OLE structured storage document
+ *
+ * D. Spinellis
+ *
+ * $Id: docprop.cpp,v 1.2 1999-11-21 13:24:31 dds Exp $
+ *
+ */
 
 #include <stdio.h>
 #include <windows.h>
 #include <ole2.h>
 
+/* Document properties are stored in this linked list */
+struct s_nameval {
+	char *name;		/* Property name */
+	char *val;		/* Property value */
+	struct s_nameval *next;	/* Next in list */
+} *nv;
 
-/* Dumps simple PROPVARIANT values. */
-void
-DumpPropVariant(PROPVARIANT * pPropVar)
+/* Property identifiersi to retrieve from documents */
+struct pidsiStruct {
+	char           *name;
+	long            pidsi;
+};
+
+// FMTID_SummaryInformation
+struct pidsiStruct summary_pidsi[] = {
+/* Array of PIDSI 's you are interested in. */
+	{ "Title", PIDSI_TITLE }              , /* VT_LPSTR */
+	{ "Subject", PIDSI_SUBJECT }          , /* ... */
+	{ "Author", PIDSI_AUTHOR }            ,
+	{ "Keywords", PIDSI_KEYWORDS }        ,
+	{ "Comments", PIDSI_COMMENTS }        ,
+	{ "Template", PIDSI_TEMPLATE }        ,
+	{ "LastAuthor", PIDSI_LASTAUTHOR }    ,
+	{ "Revision Number", PIDSI_REVNUMBER },
+	{ "Edit Time", PIDSI_EDITTIME }       , /* VT_FILENAME(UTC)  */
+	{ "Last printed", PIDSI_LASTPRINTED } , /* ... */
+	{ "Created", PIDSI_CREATE_DTM }       ,
+	{ "Last Saved", PIDSI_LASTSAVE_DTM }  ,
+	{ "Page Count", PIDSI_PAGECOUNT }     , /* VT_I4 */
+	{ "Word Count", PIDSI_WORDCOUNT }     , /* ... */
+	{ "Char Count", PIDSI_CHARCOUNT }     ,
+	{ "Thumpnail", PIDSI_THUMBNAIL }      , /* VT_CF */
+	{ "AppName", PIDSI_APPNAME }          , /* VT_LPSTR */
+	{ "Doc Security", PIDSI_DOC_SECURITY }, /* VT_I4 */
+	{ 0, 0 }
+};
+
+/* The constants are not (yet?) defined in MSVC */
+// FMTID_DocSummaryInformation
+struct pidsiStruct docsummary_pidsi[] = {
+	{ "Category", 0x00000002 /* PIDDSI_CATEGORY */ },		//  VT_LPSTR 
+	{ "PresentationTarget", 0x00000003 /* PIDDSI_PRESFORMAT */ },	//  VT_LPSTR 
+	{ "Bytes", 0x00000004 /* PIDDSI_BYTECOUNT */ },			//  VT_I4 
+	{ "Lines", 0x00000005 /* PIDDSI_LINECOUNT */ },			//  VT_I4 
+	{ "Paragraphs", 0x00000006 /* PIDDSI_PARCOUNT */ },		//  VT_I4 
+	{ "Slides", 0x00000007 /* PIDDSI_SLIDECOUNT */ },		//  VT_I4 
+	{ "Notes", 0x00000008 /* PIDDSI_NOTECOUNT */ },			//  VT_I4 
+	{ "HiddenSlides", 0x00000009 /* PIDDSI_HIDDENCOUNT */ },		//  VT_I4 
+	{ "MMClips", 0x0000000a /* PIDDSI_MMCLIPCOUNT */ },		//  VT_I4 
+	{ "ScaleCrop", 0x0000000b /* PIDDSI_SCALE */ },			//  VT_BOOL 
+	{ "HeadingPairs", 0x0000000c /* PIDDSI_HEADINGPAIR */ },		//  VT_VARIANT | VT_VECTOR 
+	{ "TitlesofParts", 0x0000000d /* PIDDSI_DOCPARTS */ },		//  VT_VECTOR | (VT_LPSTR) 
+	{ "Manager", 0x0000000e /* PIDDSI_MANAGER */ },			//  VT_LPSTR 
+	{ "Company", 0x0000000f /* PIDDSI_COMPANY */ },			//  VT_LPSTR 
+	{ "LinksUpToDate", 0x00000010 /* PIDDSI_LINKSDIRTY */ },		//VT_BOOL
+	{ 0, 0 }
+};
+
+
+/*
+ * Return a malloced copy of a PROPVARIANT type or NULL
+ */
+char *
+propvariant_string(PROPVARIANT * pPropVar)
 {
-	/* Don 't iterate arrays, just inform as an array. */
-	if (pPropVar->vt & VT_ARRAY) {
-		printf("(Array)\n");
-		return;
-	}
-	/* Don 't handle byref for simplicity, just inform byref. */
-	if (pPropVar->vt & VT_BYREF) {
-		printf("(ByRef)\n");
-		return;
-	}
+	char buff[4096];
+
+	if (pPropVar->vt & VT_ARRAY)
+		return (NULL);
+	if (pPropVar->vt & VT_BYREF)
+		return (NULL);
 	/* Switch types. */
 	switch (pPropVar->vt) {
 	case VT_EMPTY:
-		printf("(VT_EMPTY)\n");
-		break;
+		return (NULL);
 	case VT_NULL:
-		printf("(VT_NULL)\n");
-		break;
+		return (NULL);
 	case VT_BLOB:
-		printf("(VT_BLOB)\n");
-		break;
+		return (NULL);
 	case VT_BOOL:
-		printf("%s (VT_BOOL)\n",
-		       pPropVar->boolVal ? "TRUE/YES" : "FALSE/NO");
-		break;
+	       return (strdup(pPropVar->boolVal ? "TRUE" : "FALSE"));
 	case VT_I2:
-		/* 2 - byte signed int. */
-		printf("%d (VT_I2)\n", (int) pPropVar->iVal);
-		break;
+		return (strdup((sprintf(buff, "%d", (int) pPropVar->iVal), buff)));
 	case VT_I4:
-		/* 4 - byte signed int. */
-		printf("%d (VT_I4)\n", (int) pPropVar->lVal);
-		break;
+		return (strdup((sprintf(buff, "%d", (int) pPropVar->lVal), buff)));
 	case VT_R4:
-		/* 4 - byte real. */
-		printf("%.2lf (VT_R4)\n", (double) pPropVar->fltVal);
-		break;
+		return (strdup((sprintf(buff, "%.2lf", (double) pPropVar->fltVal), buff)));
 	case VT_R8:
-		/* 8 - byte real. */
-		printf("%.2lf (VT_R8)\n", (double) pPropVar->dblVal);
-		break;
+		return (strdup((sprintf(buff, "%.2lf", (double) pPropVar->dblVal), buff)));
 	case VT_BSTR:
 		/* OLE Automation string. */
 		{
 			/* Translate into ASCII. */
-			char            dbcs[1024];
 			char           *pbstr = (char *) pPropVar->bstrVal;
 			int             i = wcstombs(
-			 dbcs, pPropVar->bstrVal, *((DWORD *) (pbstr - 4)));
-			dbcs[i] = 0;
-			printf("%s (VT_BSTR)\n", dbcs);
+			 buff, pPropVar->bstrVal, *((DWORD *) (pbstr - 4)));
+			buff[i] = 0;
+			return (strdup(buff));
 		}
-		break;
 	case VT_LPSTR:
-		/* Null - terminated string. */
-		{
-			printf("%s (VT_LPSTR)\n", pPropVar->pszVal);
-		}
-		break;
+		return (strdup(pPropVar->pszVal));
 	case VT_FILETIME:
 		{
-			char           *dayPre[] =
-			{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-
 			FILETIME        lft;
 			FileTimeToLocalFileTime(&pPropVar->filetime, &lft);
 			SYSTEMTIME      lst;
 			FileTimeToSystemTime(&lft, &lst);
 
-			printf("%02d:%02d.%02d %s, %s %02d/%02d/%d (VT_FILETIME)\n",
-			 1 + (lst.wHour - 1) % 12, lst.wMinute, lst.wSecond,
-			       (lst.wHour >= 12) ? "pm" : "am",
-			       dayPre[lst.wDayOfWeek % 7],
-			       lst.wMonth, lst.wDay, lst.wYear);
+			sprintf(buff, "%4d/%02d/%02d %02d:%02d:%02d",
+			        lst.wYear, lst.wMonth, lst.wDay, 
+			        lst.wHour, lst.wMinute, lst.wSecond);
+			return (strdup(buff));
 		}
-		break;
 	case VT_CF:
 		/* Clipboard format. */
-		printf("(Clipboard format)\n");
-
-		break;
+		return (NULL);
 	default:
-		/* Unhandled type, consult wtypes.h 's VARENUM structure. */
-		printf("(Unhandled type: 0x%08lx)\n", pPropVar->vt);
-		break;
+		return (NULL);
 	}
 }
 
-/* Dump 's built-in properties of a property storage. */
+/*
+ * Append built-in properties for the given format identifier from
+ * the set specified to the nv linked list
+ */ 
 void
-DumpBuiltInProps(IPropertySetStorage * pPropSetStg)
+get_builtin_props(IPropertySetStorage * pPropSetStg, REFFMTID fmid, struct pidsiStruct pidsiArr[])
 {
-	printf("\n==================================================\n");
-	printf("BuiltInProperties Properties...\n");
-	printf("==================================================\n");
-
 	IPropertyStorage *pPropStg = NULL;
 	HRESULT         hr;
+	struct s_nameval *nvp;
 
 	/* Open summary information, getting an IpropertyStorage. */
-	hr = pPropSetStg->Open(FMTID_SummaryInformation,
-			       STGM_READ | STGM_SHARE_EXCLUSIVE, &pPropStg);
-	/* hr = pPropSetStg->Open(FMTID_UserDefinedProperties, */
-	/* STGM_READ | STGM_SHARE_EXCLUSIVE, &pPropStg); */
-	if (FAILED(hr)) {
-		printf("No Summary-Information.\n");
+	hr = pPropSetStg->Open(fmid, STGM_READ | STGM_SHARE_EXCLUSIVE, &pPropStg);
+	if (FAILED(hr))
 		return;
-	}
-	/* Array of PIDSI 's you are interested in. */
-	struct pidsiStruct {
-		char           *name;
-		long            pidsi;
-	}               pidsiArr[] = {
-		{ "Title", PIDSI_TITLE }              , /* VT_LPSTR */
-		{ "Subject", PIDSI_SUBJECT }              , /* ... */
-		{ "Author", PIDSI_AUTHOR }              ,
-		{ "Keywords", PIDSI_KEYWORDS }              ,
-		{ "Comments", PIDSI_COMMENTS }              ,
-		{ "Template", PIDSI_TEMPLATE }              ,
-		{ "LastAuthor", PIDSI_LASTAUTHOR }              ,
-		{ "Revision Number", PIDSI_REVNUMBER }              ,
-		{ "Edit Time", PIDSI_EDITTIME }              , /* VT_FILENAME(UTC)  */
-		{ "Last printed", PIDSI_LASTPRINTED }              , /* ... */
-		{ "Created", PIDSI_CREATE_DTM }              ,
-		{ "Last Saved", PIDSI_LASTSAVE_DTM }              ,
-		{ "Page Count", PIDSI_PAGECOUNT }              , /* VT_I4 */
-		{ "Word Count", PIDSI_WORDCOUNT }              , /* ... */
-		{ "Char Count", PIDSI_CHARCOUNT }              ,
-		{ "Thumpnail", PIDSI_THUMBNAIL }              , /* VT_CF */
-		{ "AppName", PIDSI_APPNAME }              , /* VT_LPSTR */
-		{ "Doc Security", PIDSI_DOC_SECURITY }              , /* VT_I4 */
-		{ 0, 0 }
-	};
-	/* Count elements in pidsiArr. */
-	int             nPidsi = 0;
-	for (nPidsi = 0; pidsiArr[nPidsi].name; nPidsi++);
 
-	/* Initialize PROPSPEC for the 	properties you  want. */
-	                PROPSPEC * pPropSpec = new PROPSPEC[nPidsi];
+	int nPidsi = 0;
+	for (nPidsi = 0; pidsiArr[nPidsi].name; nPidsi++)
+			;
+
+	PROPSPEC * pPropSpec = new PROPSPEC[nPidsi];
 	PROPVARIANT    *pPropVar = new PROPVARIANT[nPidsi];
 
 	for (int i = 0; i < nPidsi; i++) {
@@ -155,53 +161,40 @@ DumpBuiltInProps(IPropertySetStorage * pPropSetStg)
 		pPropSpec[i].propid = pidsiArr[i].pidsi;
 	}
 
-	/* Read properties. */
 	hr = pPropStg->ReadMultiple(nPidsi, pPropSpec, pPropVar);
 
-	if (FAILED(hr)) {
-		printf("IPropertyStg::ReadMultiple() failed w/error %08lx\n",
-		       hr);
-	} else {
-		/* Dump properties. */
+	if (!FAILED(hr))
 		for (i = 0; i < nPidsi; i++) {
-			printf("%16s: ", pidsiArr[i].name);
-			DumpPropVariant(pPropVar + i);
+			nvp = new s_nameval;
+			nvp->name = strdup(pidsiArr[i].name);
+			nvp->val = propvariant_string(pPropVar + i);
+			nvp->next = nv;
+			nv = nvp;
 		}
-	}
 
-	/* De - allocate memory. */
 	delete[] pPropVar;
 	delete[] pPropSpec;
-
-	/* Release obtained interface. */
 	pPropStg->Release();
-
 }
 
-/* Dump 's custom properties of a property storage. */
+/*
+ * Append custom properties to the nv linked list
+ */ 
 void
-DumpCustomProps(IPropertySetStorage * pPropSetStg)
+get_custom_props(IPropertySetStorage * pPropSetStg)
 {
-	printf("\n==================================================\n");
-	printf("Custom Properties...\n");
-	printf("==================================================\n");
-
 	IPropertyStorage *pPropStg = NULL;
 	HRESULT         hr;
 	IEnumSTATPROPSTG *pEnumProp;
 
-	/* Open User - Defined - Properties, getting an IpropertyStorage. */
 	hr = pPropSetStg->Open(FMTID_UserDefinedProperties,
 			       STGM_READ | STGM_SHARE_EXCLUSIVE, &pPropStg);
-	if (FAILED(hr)) {
-		printf("No User Defined Properties.\n");
+	if (FAILED(hr))
 		return;
-	}
-	/* Get property enumerator. */
+
 	hr = pPropStg->Enum(&pEnumProp);
 	if (FAILED(hr)) {
 		pPropStg->Release();
-		printf("Couldn't enumerate custom properties.\n");
 		return;
 	}
 	/* Enumerate properties. */
@@ -210,12 +203,10 @@ DumpCustomProps(IPropertySetStorage * pPropSetStg)
 	PROPSPEC        propSpec[1];
 	PROPVARIANT     propVar[1];
 	while (pEnumProp->Next(1, &sps, &fetched) == S_OK) {
-		/* Build a PROPSPEC for this property.*/
-			ZeroMemory(&propSpec[0], sizeof(PROPSPEC));
+		ZeroMemory(&propSpec[0], sizeof(PROPSPEC));
 		propSpec[0].ulKind = PRSPEC_PROPID;
 		propSpec[0].propid = sps.propid;
 
-		/* Read this property. */
 		hr = pPropStg->ReadMultiple(1, &propSpec[0], &propVar[0]);
 		if (!FAILED(hr)) {
 			/* Translate Prop name into ASCII. */
@@ -225,23 +216,25 @@ DumpCustomProps(IPropertySetStorage * pPropSetStg)
 						  *((DWORD *) (pbstr - 4)));
 			dbcs[i] = 0;
 
-			/* Dump this property. */
-			printf("%16s: ", dbcs);
-			DumpPropVariant(&propVar[0]);
+			struct s_nameval *nvp = new s_nameval;
+			nvp->name = strdup(dbcs);
+			nvp->val = propvariant_string(propVar);
+			nvp->next = nv;
+			nv = nvp;
 		}
 	}
 
-	/* Release obtained interface. */
 	pEnumProp->Release();
 	pPropStg->Release();
-
 }
 
-/* Dump 's custom and built-in properties of a compound document. */
+/*
+ * Append custom and build-in properties of a compound document
+ * to the nv list
+ */
 void
-DumpProps(char *filename)
+get_props(char *filename)
 {
-	/* Translate filename to Unicode. */
 	WCHAR           wcFilename[1024];
 	int             i = mbstowcs(wcFilename, filename, strlen(filename));
 	wcFilename[i] = 0;
@@ -250,46 +243,166 @@ DumpProps(char *filename)
 	IPropertySetStorage *pPropSetStg = NULL;
 	HRESULT         hr;
 
-	/* Open the document as an OLE compound document. */
 	hr =::StgOpenStorage(wcFilename, NULL,
 		       STGM_READ | STGM_SHARE_EXCLUSIVE, NULL, 0, &pStorage);
 
-	if (FAILED(hr)) {
-		if (hr == STG_E_FILENOTFOUND)
-			printf("File not found.");
-		else if (hr == STG_E_FILEALREADYEXISTS)
-			printf("Not a compound file.");
-		else
-			printf("StgOpenStorage() failed w/error %08lx", hr);
+	if (FAILED(hr))
 		return;
-	}
-	/* Obtain the IPropertySetStorage interface. */
-	hr = pStorage->QueryInterface(
-			   IID_IPropertySetStorage, (void **) &pPropSetStg);
+
+	hr = pStorage->QueryInterface(IID_IPropertySetStorage, (void **) &pPropSetStg);
 	if (FAILED(hr)) {
-		printf("QI for IPropertySetStorage failed w/error %08lx", hr);
 		pStorage->Release();
 		return;
 	}
-	/* Dump properties. */
-	DumpBuiltInProps(pPropSetStg);
-	DumpCustomProps(pPropSetStg);
 
-	/* Release obtained interfaces. */
+	get_builtin_props(pPropSetStg, FMTID_SummaryInformation, summary_pidsi);
+	get_builtin_props(pPropSetStg, FMTID_DocSummaryInformation, docsummary_pidsi);
+	get_custom_props(pPropSetStg);
+
 	pPropSetStg->Release();
 	pStorage->Release();
 }
 
-/* Program entry - point. */
+static void
+usage(char *s)
+{
+	int i;
+
+	fprintf(stderr, "Usage: %s -f format filename ...\n"
+			"\tformat is a string with embedded variable names in braces {variable}\n"
+			"\tand C escape codes.\n"
+			"\tThe following (and all user-defined) variable names can be used:\n", s);
+	fprintf(stderr, "\t{Filename}");
+	for (i = 0; summary_pidsi[i].name; i++)
+		fprintf(stderr, ", {%s}", summary_pidsi[i].name);
+	for (i = 0; docsummary_pidsi[i].name; i++)
+		fprintf(stderr, ", {%s}", docsummary_pidsi[i].name);
+	fputc('\n', stderr);
+	exit(1);
+}
+
 void
+print_all(void)
+{
+	struct s_nameval *nvp;
+
+	for (nvp = nv; nvp; nvp = nvp->next) {
+		printf("%s:", nvp->name);
+		if (nvp->val)
+			printf("%s", nvp->val);
+		putchar('\n');
+	}
+}
+
+/* Output format */
+char *fmt = NULL;
+
+/*
+ * Output the format string performing variable subsitutions
+ */
+void
+print_fmt(void)
+{
+	char *s;
+	char varname[1024];
+	int varidx;
+	enum e_state {NORMAL, BACKSLASH, VARNAME} state = NORMAL;
+	struct s_nameval *nvp;
+
+
+	for (s = fmt; *s; s++)
+		switch (state) {
+		case NORMAL:
+			if (*s == '\\')
+				state = BACKSLASH;
+			else if (*s == '{') {
+				state = VARNAME;
+				varidx = 0;
+			} else
+				putchar(*s);
+			break;
+		case BACKSLASH:
+			switch (*s) {
+			case 'a': putchar('\a'); break;
+			case 'b': putchar('\b'); break;
+			case 'f': putchar('\f'); break;
+			case 't': putchar('\t'); break;
+			case 'r': putchar('\r'); break;
+			case 'n': putchar('\n'); break;
+			case 'v': putchar('\v'); break;
+			default: putchar(*s); break;
+			}
+			state = NORMAL;
+			break;
+		case VARNAME:
+			if (*s == '}') {
+				varname[varidx] = '\0';
+				for (nvp = nv; nvp; nvp = nvp->next)
+					if (strcmp(nvp->name, varname) == 0) {
+						if (nvp->val)
+							printf("%s", nvp->val);
+						break;
+					}
+				if (!nvp) {
+					fprintf(stderr, "Unknown variable name %s\n", varname);
+					exit(1);
+				}
+				state = NORMAL;
+			} else
+				varname[varidx++] = *s;
+			break;
+		}
+}
+
+
+void
+free_nv(void)
+{
+	struct s_nameval *nvp, *next;
+
+	for (nvp = nv; nvp; nvp = next) {
+		delete nvp->name;
+		if (nvp->val)
+			delete nvp->val;
+		next = nvp->next;
+		delete nvp;
+	}
+	nv = NULL;
+}
+
+int
 main(int argc, char **argv)
 {
-	/* Validate arguments. */
-	if (argc != 2) {
-		printf("- OLE Document Property Viewer\n");
-		printf("- Usage: %s filename", argv[0]);
-		return;
+	int optind = 1;
+	int i;
+	struct s_nameval *nvp;
+
+	if (argc < 2)
+		usage(argv[0]);
+
+	if (strcmp(argv[1], "-f") == 0) {
+		if (argc < 4)
+			usage(argv[0]);
+		fmt = argv[2];
+		optind = 3;
 	}
-	/* Pass filename to the subroutine. */
-	DumpProps(argv[1]);
+
+	for (i = optind; i < argc; i++) {
+		get_props(argv[i]);
+		if (!nv) {
+			fprintf(stderr, "Unable to get document properties for %s\n", argv[i]);
+			continue;
+		}
+		nvp = new s_nameval;
+		nvp->name = strdup("Filename");
+		nvp->val = strdup(argv[i]);
+		nvp->next = nv;
+		nv = nvp;
+		if (!fmt)
+			print_all();
+		else
+			print_fmt();
+		free_nv();
+	}
+	return (0);
 }
