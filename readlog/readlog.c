@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.5 2002-07-10 10:56:46 dds Exp $
+ * $Id: readlog.c,v 1.6 2002-07-10 11:14:16 dds Exp $
  *
  */
 
@@ -45,7 +45,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"readlog - Windows event log text-based access.  $Revision: 1.5 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.6 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -196,10 +196,8 @@ get_message(char *msgfile, DWORD id, char *argv[])
 		p = strchr(msgfile, ';');
 		if (p)
 			*p = 0;
-		if ((mh = LoadLibraryEx(msgfile, NULL, LOAD_LIBRARY_AS_DATAFILE)) == NULL) {
-			wperror(msgfile, GetLastError());
-			return NULL;
-		}
+		if ((mh = LoadLibraryEx(msgfile, NULL, LOAD_LIBRARY_AS_DATAFILE)) == NULL)
+			break;
 		if (FormatMessage(
 		    FORMAT_MESSAGE_ALLOCATE_BUFFER | 
 		    FORMAT_MESSAGE_FROM_HMODULE |
@@ -212,10 +210,13 @@ get_message(char *msgfile, DWORD id, char *argv[])
 			msgfile = p + 1;
 		else {
 			wperror("FormatMessage", GetLastError());
-			FreeLibrary(mh);
-			return NULL;
+			break;
 		}
 	}
+	wperror(msgfile, GetLastError());
+	p = LocalAlloc(LPTR, 20);
+	sprintf(p, "%u", id);
+	return p;
 }
 
 static int
@@ -263,20 +264,22 @@ print_msg(EVENTLOGRECORD *pelr)
 	char *argv[1024];
 	int i;
 	char *p;
+	int regok;
 
 	print_time(pelr);
 	/* Computer name */
 	printf("%s ", (char *)pelr + strlen((char *)pelr + sizeof(EVENTLOGRECORD)) + sizeof(EVENTLOGRECORD) + 1);
 	/* Access the registry message files */
 	sprintf(key, "SYSTEM\\CurrentControlSet\\Services\\Eventlog\\%s\\%s", source, (LPSTR)((LPBYTE) pelr + sizeof(EVENTLOGRECORD)));
+	*msgfile = 0;
 	if ((ret = RegOpenKeyEx(HKEY_LOCAL_MACHINE, key, 0, KEY_READ, &rh)) != ERROR_SUCCESS) {
 		wperror(key, ret);
-		return;
-	}
-	if (!get_regentry(rh, "EventMessageFile", msgfile)) {
+		regok = 0;
+	} else
+		regok = 1;
+	if (regok && !get_regentry(rh, "EventMessageFile", msgfile)) {
 		wperror("EventMessageFile", ret);
 		RegCloseKey(rh);
-		return;
 	}
 	/* Event source */
 	if (o_source)
@@ -286,7 +289,7 @@ print_msg(EVENTLOGRECORD *pelr)
 		char *category;
 		char catfile[1024];
 
-		if (pelr->EventCategory == 0)
+		if (!regok || pelr->EventCategory == 0)
 			printf("-: ");
 		else if (get_regentry(rh, "CategoryMessageFile", catfile) &&
 			 (category = get_message(catfile, pelr->EventCategory, NULL))) {
@@ -299,12 +302,13 @@ print_msg(EVENTLOGRECORD *pelr)
 	/* Event type */
 	if (o_type)
 		printf("%s: ", evtype(pelr->EventType));
-	RegCloseKey(rh);
 	print_uname(pelr);
-	/*
-	 * Some message file specs use a ; separated path.
-	 * This is undocumented and we do not support it.
-	 */
+	if (regok)
+		RegCloseKey(rh);
+	else {
+		printf("(no error message available)\n");
+		return;
+	}
 	for (i = 0, p = (char *)((LPBYTE) pelr + pelr->StringOffset); i < pelr->NumStrings; p += strlen(argv[i]) + 1, i++)
 		argv[i] = p;
 	if ((outmsg = get_message(msgfile, pelr->EventID, argv)) == NULL)
