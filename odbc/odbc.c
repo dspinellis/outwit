@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: odbc.c,v 1.4 2003-12-02 08:33:21 dds Exp $
+ * $Id: odbc.c,v 1.5 2003-12-02 12:33:15 dds Exp $
  *
  */
 
@@ -45,7 +45,7 @@ static void
 version(void)
 {
 	printf(
-		"odbc - select data from relational databases.  $Revision: 1.4 $\n"
+		"odbc - select data from relational databases.  $Revision: 1.5 $\n"
 		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -73,7 +73,7 @@ usage(char *fname)
 		"DRVC can either specify a registered DSN, as in:\n"
 		"\t\"DSN=registered_dsn_name;uid=myusername;pwd=mypassword\"\n"
 		"or directly a driver, as in:\n"
-		"\t\"Driver={Microsoft Access Driver(*.mdb)};DBQ=C:\\temp\\myfile.mdb\"\n\n"
+		"\t\"Driver={Microsoft Access Driver (*.mdb)};DBQ=myfile.mdb\"\n\n"
 		, fname
 	);
 	exit(1);
