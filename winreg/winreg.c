@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.4 2000-04-01 12:14:39 dds Exp $
+ * $Id: winreg.c,v 1.5 2000-04-13 16:32:05 dds Exp $
  *
  */
 
@@ -44,7 +44,7 @@ extern int	optind;		/* Global argv index. */
 static int line;		/* Current input line */
 
 static void
-wperror(char *s)
+wperror(char *s, LONG err)
 {
 	LPVOID lpMsgBuf;
 
@@ -53,7 +53,7 @@ wperror(char *s)
 	    FORMAT_MESSAGE_FROM_SYSTEM | 
 	    FORMAT_MESSAGE_IGNORE_INSERTS,
 	    NULL,
-	    GetLastError(),
+	    err,		// GetLastError() does not seem to work reliably
 	    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 	    (LPTSTR) &lpMsgBuf,
 	    0,
@@ -167,12 +167,13 @@ print_key(HKEY key, char *basename)
 	DWORD onamelen, odatalen;
 	char *data, *name;
 	DWORD type, i, numvalues;
+	LONG ret;
 
-	if (RegQueryInfoKey(key, NULL, NULL, NULL,
+	if ((ret = RegQueryInfoKey(key, NULL, NULL, NULL,
 				NULL, NULL, NULL,
 				&numvalues,
-				&namelen, &datalen, NULL, NULL) != ERROR_SUCCESS) {
-		wperror("RegQueryInfoKey");
+				&namelen, &datalen, NULL, NULL)) != ERROR_SUCCESS) {
+		wperror("RegQueryInfoKey", ret);
 		return (-1);
 	}
 	namelen++;
@@ -181,8 +182,8 @@ print_key(HKEY key, char *basename)
 	data = malloc(datalen);
 	/*
 	odatalen = datalen;
-	if (RegQueryValueEx(key, NULL, NULL, &type, data, &odatalen) != ERROR_SUCCESS)
-			wperror("RegQueryValueEx");
+	if ((ret = RegQueryValueEx(key, NULL, NULL, &type, data, &odatalen)) != ERROR_SUCCESS)
+			wperror("RegQueryValueEx", ret);
 	
 	*/
 	if (numvalues == 0) {
@@ -194,7 +195,7 @@ print_key(HKEY key, char *basename)
 	for (i = 0; ; i++) {
 		onamelen = namelen;
 		odatalen = datalen;
-		switch (RegEnumValue(key, i, name, &onamelen, NULL, &type, data, &odatalen)) {
+		switch (ret = RegEnumValue(key, i, name, &onamelen, NULL, &type, data, &odatalen)) {
 		case ERROR_SUCCESS:
 			if (o_print_name)
 				printf("%s\\%s\\%s", rootname, basename, name);
@@ -206,7 +207,7 @@ print_key(HKEY key, char *basename)
 			free(data);
 			return (0);
 		default:
-			wperror("RegEnumValue");
+			wperror("RegEnumValue", ret);
 			free(name);
 			free(data);
 			return (-1);
@@ -227,18 +228,19 @@ print_registry(char *pkeyname)
 	char *keyname, *subkeypos;
 	DWORD keynamelen;
 	DWORD skeynamelen, oskeynamelen;
+	LONG ret;
 
-	if (RegOpenKeyEx(rootkey, pkeyname, 0, KEY_READ, &key) != ERROR_SUCCESS) {
-		wperror("RegOpenKeyEx");
+	if ((ret = RegOpenKeyEx(rootkey, pkeyname, 0, KEY_READ, &key)) != ERROR_SUCCESS) {
+		wperror("RegOpenKeyEx", ret);
 		return (-1);
 	}
 
 	print_key(key, pkeyname);
-	if (RegQueryInfoKey(key, NULL, NULL, NULL,
+	if ((ret = RegQueryInfoKey(key, NULL, NULL, NULL,
 			    NULL, &skeynamelen, NULL,
 			    NULL,
-			    NULL, NULL, NULL, NULL) != ERROR_SUCCESS) {
-		wperror("RegQueryInfoKey");
+			    NULL, NULL, NULL, NULL)) != ERROR_SUCCESS) {
+		wperror("RegQueryInfoKey", ret);
 		RegCloseKey(key);
 		return (-1);
 	}
@@ -264,7 +266,7 @@ print_registry(char *pkeyname)
 			free(keyname);
 			return (0);
 		default:
-			wperror("RegEnumKeyEx");
+			wperror("RegEnumKeyEx", err);
 			RegCloseKey(key);
 			free(keyname);
 			return (-1);
@@ -321,7 +323,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"winreg - Windows registry text-based access.  $Revision: 1.4 $\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.5 $\n"
 		"(C) Copyright 1999, 2000 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -334,8 +336,8 @@ usage(char *fname)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: %s [-F c] [-ntvc] [key]\n"
-		"\tFS\tField separator (default is tab)\n"
+		"usage: %s [-F c] [-ntvdc] [key]\n"
+		"\t-f c\tField separator (default is tab)\n"
 		"\t-n\tDo not print key names\n"
 		"\t-t\tDo not print key types\n"
 		"\t-v\tDo not print key values\n"
@@ -396,6 +398,7 @@ addkey(char *name, DWORD type, char *value, int datalen)
 	char *vname;		/* Value name */
 	char rname[100];
 	HKEY key;
+	LONG ret;
 
 	if (o_verify)
 			return;
@@ -405,14 +408,14 @@ addkey(char *name, DWORD type, char *value, int datalen)
 		*vname = '\0';
 		vname++;
 	}
-	if (RegCreateKeyEx(root, kname, 0, NULL, REG_OPTION_NON_VOLATILE,
-			KEY_ALL_ACCESS, NULL, &key, NULL) != ERROR_SUCCESS)
-		wperror("RegCreateKeyEx");
+	if ((ret = RegCreateKeyEx(root, kname, 0, NULL, REG_OPTION_NON_VOLATILE,
+			KEY_ALL_ACCESS, NULL, &key, NULL)) != ERROR_SUCCESS)
+		wperror("RegCreateKeyEx", ret);
 	if (type != REG_NONE)
-		if (RegSetValueEx(key, vname, 0, type, value, datalen) != ERROR_SUCCESS)
-			wperror("RegSetValueEx");
-	if (RegCloseKey(key) != ERROR_SUCCESS)
-		wperror("RegCloseKey");
+		if ((ret = RegSetValueEx(key, vname, 0, type, value, datalen)) != ERROR_SUCCESS)
+			wperror("RegSetValueEx", ret);
+	if ((ret = RegCloseKey(key)) != ERROR_SUCCESS)
+		wperror("RegCloseKey", ret);
 }
 
 /* 
