@@ -1,7 +1,7 @@
 /*
  * Copy/Paste the Windows Clipboard
  *
- * (C) Copyright 1994-2001 Diomidis Spinellis
+ * (C) Copyright 1994-2002 Diomidis Spinellis
  * 
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.11 2001-03-08 11:36:24 dds Exp $
+ * $Id: winclip.c,v 1.12 2002-01-03 12:33:09 dds Exp $
  *
  */
 
@@ -50,8 +50,8 @@ void
 usage(void)
 {
 	fprintf(stderr, 
-		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.11 $\n"
-		"(C) Copyright 1994-2001 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+		"winclip - copy/Paste the Windows Clipboard.  $Revision: 1.12 $\n"
+		"(C) Copyright 1994-2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -63,7 +63,7 @@ usage(void)
 		"WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF\n"
 		"MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.\n\n"
 
-		"usage: winclip [-w] -c|-p [filename]\n");
+		"usage: winclip [-w|u] -c|-p [filename]\n");
 	exit(1);
 }
 
@@ -87,9 +87,16 @@ main(int argc, char *argv[])
 	FILE *iofile;		/* File to use for I/O */
 	char *fname;		/* and its file name */
 
-	while ((c = getopt(argc, argv, "wcp")) != EOF)
+	while ((c = getopt(argc, argv, "uwcp")) != EOF)
 		switch (c) {
+		case 'u':
+			if (textfmt != CF_OEMTEXT)
+				usage();
+			textfmt = CF_UNICODETEXT;
+			break;
 		case 'w':
+			if (textfmt != CF_OEMTEXT)
+				usage();
 			textfmt = CF_TEXT;
 			break;
 		case 'c':
@@ -125,11 +132,11 @@ main(int argc, char *argv[])
 			fname = "standard output";
 		}
 		if (IsClipboardFormatAvailable(textfmt)) {
-			/* Clipboard contains OEM text; copy it */
+			/* Clipboard contains text; copy it */
 			hglb = GetClipboardData(textfmt);
 			if (hglb != NULL) { 
 				setmode(fileno(iofile), O_BINARY);
-				fprintf(iofile, "%s", hglb);
+				fwprintf(iofile, L"%s", hglb);
 			}
 			CloseClipboard(); 
 			return (0);
