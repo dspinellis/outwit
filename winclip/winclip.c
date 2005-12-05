@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.22 2005-12-05 20:31:38 dds Exp $
+ * $Id: winclip.c,v 1.23 2005-12-05 20:49:06 dds Exp $
  *
  */
 
@@ -30,14 +30,23 @@
 #define CF_DIBV5 17
 #endif
 
-/*
- * Flags affecting Unicode output
- */
+/* Size of an I/O chunk */
+#define CHUNK 1024
+
+/* Flags affecting Unicode output */
 /* Print byte order mark */
 static int bom = 0;
 /* output UTF instead of native wide characters */
 static int multibyte = 0;
+/* True if big-endian BOM */
+static int big_endian = 0;
 
+/* Other flags */
+/* Text format */
+static unsigned int textfmt = CF_OEMTEXT;
+/* Language identifiers */
+static int langid = LANG_NEUTRAL;
+static int sublangid = SUBLANG_DEFAULT;
 
 /* Program name */
 char *argv0;
@@ -46,7 +55,6 @@ static void
 error(char *s)
 {
 	LPVOID lpMsgBuf;
-	char buff[1024];
 
 	FormatMessage(
 	    FORMAT_MESSAGE_ALLOCATE_BUFFER |
@@ -54,7 +62,7 @@ error(char *s)
 	    FORMAT_MESSAGE_IGNORE_INSERTS,
 	    NULL,
 	    GetLastError(),
-	    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+	    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* Default language */
 	    (LPTSTR) &lpMsgBuf,
 	    0,
 	    NULL
@@ -125,7 +133,7 @@ usage(void)
 void
 version(void)
 {
-	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.22 $\n\n", argv0);
+	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.23 $\n\n", argv0);
 	printf( "(C) Copyright 1994-2005 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -177,6 +185,9 @@ get_val(const struct s_keyval *kv, int len, const char *key)
  * Return the name of a predefined clipboard format name.
  * Return NULL if this name is not known.
  *
+ * This must be the intended implementation of the function
+ * GetPredefinedClipboardFormatName, inexplicably appearing in
+ * Microsoft's example.
  */
 static const char *
 predefined_name(int n)
@@ -217,9 +228,237 @@ predefined_name(int n)
 	return NULL;
 }
 
+/* Display the clipboard's formats */
+static void
+info(void)
+{
+	int n;
 
-// I/O chunk
-#define CHUNK 1024
+	if (!OpenClipboard(NULL))
+		error("Unable to open clipboard");
+	for (n = EnumClipboardFormats(0); n; n = EnumClipboardFormats(n)) {
+		char buff[1024];
+		LPCSTR fmtname;
+		if ((fmtname = predefined_name(n)) == NULL) {
+			if (GetClipboardFormatName(n, buff, sizeof(buff)) == 0)
+				error("Unable to get clipboard format name");
+			fmtname = buff;
+		}
+		printf("%s\n", fmtname);
+	}
+	if (GetLastError() != ERROR_SUCCESS)
+		error("Error enumerating clipboard formats");
+	CloseClipboard();
+}
+
+/*
+ * Paste the Windows clipboard to standard output
+ */
+static void
+paste(const char *fname, FILE *iofile)
+{
+	HANDLE cb_hnd;		/* Clipboard memory handle */
+
+	if (!OpenClipboard(NULL))
+		error("Unable to open clipboard");
+	if (IsClipboardFormatAvailable(textfmt)) {
+		/* Clipboard contains text; copy it */
+		cb_hnd = GetClipboardData(textfmt);
+		if (cb_hnd != NULL) {
+			setmode(fileno(iofile), O_BINARY);
+			if (textfmt == CF_UNICODETEXT)
+				unicode_fputs(cb_hnd, iofile);
+			else
+				fprintf(iofile, "%s", cb_hnd);
+		}
+		CloseClipboard();
+		exit(0);
+	} else if (IsClipboardFormatAvailable(CF_HDROP)) {
+		/* Clipboard contains file names; print them */
+		cb_hnd = GetClipboardData(CF_HDROP);
+		if (cb_hnd != NULL) {
+			int nfiles, i;
+			char fname[4096];
+
+			nfiles = DragQueryFile(cb_hnd, 0xFFFFFFFF, NULL, 0);
+			for (i = 0; i < nfiles; i++) {
+				switch (textfmt) {
+				case CF_TEXT:	/* Windows native */
+					DragQueryFileA(cb_hnd, i, fname, sizeof(fname));
+					fprintf(iofile, "%s\n", fname);
+					break;
+				case CF_UNICODETEXT:
+					DragQueryFileW(cb_hnd, i, (LPWSTR)fname, sizeof(fname));
+					unicode_fputs((wchar_t *)fname, iofile);
+					break;
+				case CF_OEMTEXT:
+					DragQueryFileA(cb_hnd, i, fname, sizeof(fname));
+					CharToOemBuff(fname, fname, strlen(fname));
+					fprintf(iofile, "%s\n", fname);
+					break;
+				}
+			}
+		}
+		CloseClipboard();
+		exit(0);
+	} else if (IsClipboardFormatAvailable(CF_BITMAP)) {
+		/* Clipboard contains a bitmap; dump it */
+		cb_hnd = GetClipboardData(CF_BITMAP);
+		if (cb_hnd != NULL) {
+			BITMAP bmp;
+			HDC hdc;
+			int x, y;
+			COLORREF cref;
+			HGDIOBJ oldobj;
+
+			if (!GetObject(cb_hnd, sizeof(BITMAP), &bmp))
+				error("Unable to get bitmap dimensions");
+			setmode(fileno(iofile), O_BINARY );
+			fprintf(iofile, "P6\n%d %d\n255\n", bmp.bmWidth, bmp.bmHeight);
+			if ((hdc = CreateCompatibleDC(NULL)) == NULL)
+				error("Unable to create a compatible device context");
+			if ((oldobj = SelectObject(hdc, cb_hnd)) == NULL)
+				error("Unable to select object");
+			for (y = 0; y < bmp.bmHeight; y++)
+				for (x = 0; x < bmp.bmWidth; x++) {
+					cref = GetPixel(hdc, x, y);
+					putc(GetRValue(cref), iofile);
+					putc(GetGValue(cref), iofile);
+					putc(GetBValue(cref), iofile);
+				}
+			SelectObject(hdc, oldobj);
+			DeleteDC(hdc);
+		}
+		CloseClipboard();
+	} else {
+		CloseClipboard();
+		error("The clipboard does not contain text or files");
+	}
+	if (ferror(iofile)) {
+		perror(fname);
+		exit(1);
+	}
+}
+
+/*
+ * Copy our input to the Windows Clipboard
+ */
+static void
+copy(const char *fname, FILE *iofile)
+{
+	char *b, *bp;		/* Buffer, pointer to buffer insertion point */
+	HANDLE cb_hnd;		/* Clipboard memory handle */
+	HANDLE lc_hnd;		/* Locale memory handle */
+	size_t bsiz, remsiz;	/* Buffer, size, remaining size */
+	size_t total;		/* Total read */
+	int n;
+	char *clipdata;		/* Pointer to the clipboard data */
+	LCID *plcid;		/* Locale id pointer */
+
+	if (!OpenClipboard(NULL))
+		error("Unable to open the clipboard");
+	if (!EmptyClipboard()) {
+		CloseClipboard();
+		error("Unable to empty the clipboard");
+	}
+
+	/* Read stdin into buffer */
+	setmode(fileno(iofile), O_BINARY);
+	bp = b = malloc(remsiz = bsiz = CHUNK);
+	if (b == NULL) {
+		CloseClipboard();
+		fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, bsiz);
+		exit(1);
+	}
+	total = 0;
+	while ((n = fread(bp, 1, remsiz, iofile)) > 0) {
+		remsiz -= n;
+		total += n;
+		if (remsiz < CHUNK) {
+			b = realloc(b, bsiz *= 2);
+			if (b == NULL) {
+				CloseClipboard();
+				fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, bsiz);
+				exit(1);
+			}
+			remsiz = bsiz - total;
+			bp = b + total;
+		}
+	}
+	if (bom) {
+		if (memcmp(b, "\xef\xbb\xbf", 3) == 0) {
+			/* UTF-8 */
+			textfmt = CF_UNICODETEXT;
+			multibyte = 1;
+			big_endian = 0;
+		} else if (memcmp(b, "\xff\xfe", 2) == 0) {
+			/* UTF-16 little endian (native) */
+			textfmt = CF_UNICODETEXT;
+			multibyte = 0;
+			big_endian = 0;
+		} else if (memcmp(b, "\xfe\xff", 2) == 0) {
+			/* UTF-16 big endian */
+			textfmt = CF_UNICODETEXT;
+			multibyte = 0;
+			big_endian = 1;
+		}
+	}
+	if (textfmt == CF_UNICODETEXT && multibyte) {
+		int b2siz = (total + 1) * 2;
+		char *b2 = malloc(b2siz);
+		int ret;
+
+		if (b2 == NULL) {
+			fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, b2siz);
+			CloseClipboard();
+			exit(1);
+		}
+		if ((ret = MultiByteToWideChar(CP_UTF8, 0, b, total, (LPWSTR)b2, b2siz)) == 0) {
+			CloseClipboard();
+			error("Error converting a multi byte sequence into wide characters");
+		}
+		total = ret * 2;
+		b = b2;
+	}
+	/* Convert big to little endian */
+	if (big_endian) {
+		char tmp;
+		unsigned i;
+
+		for (i = 0; i < total; i++) {
+			tmp = b[i];
+			b[i] = b[i + 1];
+			b[i + 1] = tmp;
+		}
+	}
+	cb_hnd = GlobalAlloc(GMEM_MOVEABLE, total + 1);
+	if (cb_hnd == NULL) {
+		CloseClipboard();
+		error("Unable to allocate clipboard memory");
+	}
+	clipdata = (char *)GlobalLock(cb_hnd);
+	memcpy(clipdata, b, total);
+	clipdata[total] = '\0';
+	clipdata[total + 1] = '\0';
+	GlobalUnlock(cb_hnd);
+	SetClipboardData(textfmt, cb_hnd);
+	/* Now set the locale */
+	lc_hnd = GlobalAlloc(GHND, sizeof(LCID));
+	if (lc_hnd == NULL) {
+		CloseClipboard();
+		error("Unable to allocate clipboard memory");
+	}
+	plcid = (LCID*)GlobalLock(lc_hnd);
+	*plcid = MAKELCID(MAKELANGID(langid, sublangid), SORT_DEFAULT);
+	GlobalUnlock(lc_hnd);
+	SetClipboardData(CF_LOCALE, lc_hnd);
+	CloseClipboard();
+	if (ferror(iofile)) {
+		perror(fname);
+		exit(1);
+	}
+}
+
 
 int getopt(int argc, char *argv[], char *optstring);
 extern char	*optarg;	/* Global argument pointer. */
@@ -227,21 +466,10 @@ extern int	optind;		/* Global argv index. */
 
 main(int argc, char *argv[])
 {
-	HANDLE cb_hnd;		/* Clipboard memory handle */
-	HANDLE lc_hnd;		/* Locale memory handle */
-	char *b, *bp;		/* Buffer, pointer to buffer insertion point */
-	size_t bsiz, remsiz;	/* Buffer, size, remaining size */
-	size_t total;		/* Total read */
-	int n;
 	enum {O_NONE, O_COPY, O_PASTE, O_INFO} operation = O_NONE;
-	unsigned int textfmt = CF_OEMTEXT;
 	int c;
-	char *clipdata;		/* Pointer to the clipboard data */
 	FILE *iofile;		/* File to use for I/O */
 	char *fname;		/* and its file name */
-	int big_endian = 0;	/* True if big-endian BOM */
-	LCID *plcid;		/* Locale id pointer */
-	int langid = LANG_NEUTRAL, sublangid = SUBLANG_DEFAULT;
 
 	argv0 = argv[0];
 	while ((c = getopt(argc, argv, "vhuwcpimbl:s:")) != EOF)
@@ -304,28 +532,9 @@ main(int argc, char *argv[])
 
 	switch (operation) {
 	case O_INFO:
-		if (!OpenClipboard(NULL))
-			error("Unable to open clipboard");
-		for (n = EnumClipboardFormats(0); n; n = EnumClipboardFormats(n)) {
-			char buff[1024];
-			LPCSTR fmtname;
-			if ((fmtname = predefined_name(n)) == NULL) {
-				if (GetClipboardFormatName(n, buff, sizeof(buff)) == 0)
-					error("Unable to get clipboard format name");
-				fmtname = buff;
-			}
-			printf("%s\n", fmtname);
-		}
-		if (GetLastError() != ERROR_SUCCESS)
-			error("Error enumerating clipboard formats");
-		CloseClipboard();
+		info();
 		break;
 	case O_PASTE:
-		/*
-		 * Paste the Windows clipboard to standard output
-		 */
-		if (!OpenClipboard(NULL))
-			error("Unable to open clipboard");
 		if (argc - optind == 1) {
 			if ((iofile = fopen(fname = argv[optind], "w")) == NULL) {
 				perror(argv[optind]);
@@ -335,89 +544,9 @@ main(int argc, char *argv[])
 			iofile = stdout;
 			fname = "standard output";
 		}
-		if (IsClipboardFormatAvailable(textfmt)) {
-			/* Clipboard contains text; copy it */
-			cb_hnd = GetClipboardData(textfmt);
-			if (cb_hnd != NULL) {
-				setmode(fileno(iofile), O_BINARY);
-				if (textfmt == CF_UNICODETEXT)
-					unicode_fputs(cb_hnd, iofile);
-				else
-					fprintf(iofile, "%s", cb_hnd);
-			}
-			CloseClipboard();
-			return (0);
-		} else if (IsClipboardFormatAvailable(CF_HDROP)) {
-			/* Clipboard contains file names; print them */
-			cb_hnd = GetClipboardData(CF_HDROP);
-			if (cb_hnd != NULL) {
-				int nfiles, i;
-				char fname[4096];
-
-				nfiles = DragQueryFile(cb_hnd, 0xFFFFFFFF, NULL, 0);
-				for (i = 0; i < nfiles; i++) {
-					switch (textfmt) {
-					case CF_TEXT:	/* Windows native */
-						DragQueryFileA(cb_hnd, i, fname, sizeof(fname));
-						fprintf(iofile, "%s\n", fname);
-						break;
-					case CF_UNICODETEXT:
-						DragQueryFileW(cb_hnd, i, (LPWSTR)fname, sizeof(fname));
-						unicode_fputs((wchar_t *)fname, iofile);
-						break;
-					case CF_OEMTEXT:
-						DragQueryFileA(cb_hnd, i, fname, sizeof(fname));
-						CharToOemBuff(fname, fname, strlen(fname));
-						fprintf(iofile, "%s\n", fname);
-						break;
-					}
-				}
-			}
-			CloseClipboard();
-			return (0);
-		} else if (IsClipboardFormatAvailable(CF_BITMAP)) {
-			/* Clipboard contains a bitmap; dump it */
-			cb_hnd = GetClipboardData(CF_BITMAP);
-			if (cb_hnd != NULL) {
-				SIZE dim;
-				BITMAP bmp;
-				HDC hdc;
-				int x, y;
-				COLORREF cref;
-				HGDIOBJ oldobj;
-
-				if (!GetObject(cb_hnd, sizeof(BITMAP), &bmp))
-					error("Unable to get bitmap dimensions");
-				setmode(fileno(iofile), O_BINARY );
-				fprintf(iofile, "P6\n%d %d\n255\n", bmp.bmWidth, bmp.bmHeight);
-				if ((hdc = CreateCompatibleDC(NULL)) == NULL)
-					error("Unable to create a compatible device context");
-				if ((oldobj = SelectObject(hdc, cb_hnd)) == NULL)
-					error("Unable to select object");
-				for (y = 0; y < bmp.bmHeight; y++)
-					for (x = 0; x < bmp.bmWidth; x++) {
-						cref = GetPixel(hdc, x, y);
-						putc(GetRValue(cref), iofile);
-						putc(GetGValue(cref), iofile);
-						putc(GetBValue(cref), iofile);
-					}
-				SelectObject(hdc, oldobj);
-				DeleteDC(hdc);
-			}
-			CloseClipboard();
-		} else {
-			CloseClipboard();
-			error("The clipboard does not contain text or files");
-		}
-		if (ferror(iofile)) {
-			perror(fname);
-			return (1);
-		}
+		paste(fname, iofile);
 		break;
 	case O_COPY:
-		/*
-		 * Copy our input to the Windows Clipboard
-		 */
 		if (argc - optind == 1) {
 			if ((iofile = fopen(fname = argv[optind], "r")) == NULL) {
 				perror(argv[optind]);
@@ -427,108 +556,7 @@ main(int argc, char *argv[])
 			iofile = stdin;
 			fname = "standard input";
 		}
-		if (!OpenClipboard(NULL))
-			error("Unable to open the clipboard");
-		if (!EmptyClipboard()) {
-			CloseClipboard();
-			error("Unable to empty the clipboard");
-		}
-
-		// Read stdin into buffer
-		setmode(fileno(iofile), O_BINARY);
-		bp = b = malloc(remsiz = bsiz = CHUNK);
-		if (b == NULL) {
-			CloseClipboard();
-			fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, bsiz);
-			return (1);
-		}
-		total = 0;
-		while ((n = fread(bp, 1, remsiz, iofile)) > 0) {
-			remsiz -= n;
-			total += n;
-			if (remsiz < CHUNK) {
-				b = realloc(b, bsiz *= 2);
-				if (b == NULL) {
-					CloseClipboard();
-					fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, bsiz);
-					return (1);
-				}
-				remsiz = bsiz - total;
-				bp = b + total;
-			}
-		}
-		if (bom) {
-			if (memcmp(b, "\xef\xbb\xbf", 3) == 0) {
-				/* UTF-8 */
-				textfmt = CF_UNICODETEXT;
-				multibyte = 1;
-				big_endian = 0;
-			} else if (memcmp(b, "\xff\xfe", 2) == 0) {
-				/* UTF-16 little endian (native) */
-				textfmt = CF_UNICODETEXT;
-				multibyte = 0;
-				big_endian = 0;
-			} else if (memcmp(b, "\xfe\xff", 2) == 0) {
-				/* UTF-16 big endian */
-				textfmt = CF_UNICODETEXT;
-				multibyte = 0;
-				big_endian = 1;
-			}
-		}
-		if (textfmt == CF_UNICODETEXT && multibyte) {
-			int b2siz = (total + 1) * 2;
-			char *b2 = malloc(b2siz);
-			int ret;
-
-			if (b2 == NULL) {
-				fprintf(stderr, "%s: Unable to allocate %d bytes of memory\n", argv0, b2siz);
-				CloseClipboard();
-				return (1);
-			}
-			if ((ret = MultiByteToWideChar(CP_UTF8, 0, b, total, (LPWSTR)b2, b2siz)) == 0) {
-				CloseClipboard();
-				error("Error converting a multi byte sequence into wide characters");
-			}
-			total = ret * 2;
-			b = b2;
-		}
-		/* Convert big to little endian */
-		if (big_endian) {
-			char tmp;
-			int i;
-
-			for (i = 0; i < total; i++) {
-				tmp = b[i];
-				b[i] = b[i + 1];
-				b[i + 1] = tmp;
-			}
-		}
-		cb_hnd = GlobalAlloc(GMEM_MOVEABLE, total + 1);
-		if (cb_hnd == NULL) {
-			CloseClipboard();
-			error("Unable to allocate clipboard memory");
-		}
-		clipdata = (char *)GlobalLock(cb_hnd);
-		memcpy(clipdata, b, total);
-		clipdata[total] = '\0';
-		clipdata[total + 1] = '\0';
-		GlobalUnlock(cb_hnd);
-		SetClipboardData(textfmt, cb_hnd);
-		// Now set the locale
-		lc_hnd = GlobalAlloc(GHND, sizeof(LCID));
-		if (lc_hnd == NULL) {
-			CloseClipboard();
-			error("Unable to allocate clipboard memory");
-		}
-		plcid = (LCID*)GlobalLock(lc_hnd);
-		*plcid = MAKELCID(MAKELANGID(langid, sublangid), SORT_DEFAULT);
-		GlobalUnlock(lc_hnd);
-		SetClipboardData(CF_LOCALE, lc_hnd);
-		CloseClipboard();
-		if (ferror(iofile)) {
-			perror(fname);
-			return (1);
-		}
+		copy(fname, iofile);
 		break;
 	case O_NONE:
 		usage();
@@ -536,4 +564,3 @@ main(int argc, char *argv[])
 	}
 	return (0);
 }
-
