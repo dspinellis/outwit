@@ -1,4 +1,4 @@
-.TH WINCLIP 1 "10 February 2005"
+.TH WINCLIP 1 "5 December 2005"
 .\" (C) Copyright 1998-2005 Diomidis Spinellis.  All rights reserved.
 .\"
 .\" Permission to use, copy, and distribute this software and its
@@ -11,7 +11,7 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.11 2005-02-10 15:10:26 dds Exp $
+.\" $Id: winclip.1,v 1.12 2005-12-05 20:31:38 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
@@ -22,7 +22,7 @@ winclip \- console Windows clipboard interface
 [\fB\-b\fP]
 [\fB\-l\fP \fIlang\fP]
 [\fB\-s\fP \fIsublang\fP]
-\fB-c\fP|\fB-p\fP
+\fB-c\fP|\fB-p\fP|\fB-i\fP
 [\fIfile\fP]
 .SH DESCRIPTION
 \fIWinclip\fP provides access to the Windows clipboard from a console
@@ -39,6 +39,9 @@ it copies its standard input (or the \fIfile\fP
 optionally specified in the command line) to the Windows clipboard.
 Again, \fIwinclip\fP input may be redirected to be read from a file
 (using the < shell syntax), or from another process of a pipeline.
+Finally, when \fIwinclip\fP is executed with the -i (information) argument
+it will print on its standard output all data formats that can be retrieved
+from the clipboard.
 .LP
 \fIWinclip\fP can currently paste text clipboard data, filenames
 that have been copied in the Windows explorer, and bitmaps which
@@ -53,6 +56,11 @@ the Intel processor versions of Windows NT, 95, 98, Me, 2000, XP.
 Copy the standard input to the Windows clipboard.
 .IP "\fB\-p\fP"
 Copy the Windows clipboard contents to the standard output.
+.IP "\fB\-i\fP"
+Print on the standard output the data formats available in the clipboard.
+Each format is displayed on a separate line.
+The standard clipboard formats are printed using their Windows API CF_ names;
+all other formats are printed using their registered name.
 .IP "\fB\-w\fP"
 Transfer text in the Windows-native format (CF_TEXT) instead of the
 (default) DOS-native format (CF_OEMTEXT).

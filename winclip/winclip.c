@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.21 2005-02-11 18:04:26 dds Exp $
+ * $Id: winclip.c,v 1.22 2005-12-05 20:31:38 dds Exp $
  *
  */
 
@@ -24,6 +24,11 @@
 #include <fcntl.h>
 #include <io.h>
 #include <wchar.h>
+
+/* Add some formats lacking in VC5 */
+#ifndef CF_DIBV5
+#define CF_DIBV5 17
+#endif
 
 /*
  * Flags affecting Unicode output
@@ -88,7 +93,7 @@ unicode_fputs(const wchar_t *str, FILE *iofile)
 }
 
 static char *usage_string =
-	"usage: %s [-v|h] [-w|u|m] [-l lang] [-s sublang] [-b] -c|-p [filename]\n";
+	"usage: %s [-v|h] [-w|u|m] [-l lang] [-s sublang] [-b] -c|-p|-i [filename]\n";
 
 void
 help(void)
@@ -98,6 +103,7 @@ help(void)
 		"\t-h Display this help message\n"
 		"\t-c Copy to clipboard\n"
 		"\t-p Paste from clipboard\n"
+		"\t-i Print the type of the clipboard's contents\n"
 		"\t-u Data to be copied / pasted is in Unicode format\n"
 		"\t-m Unicode data is multi-byte\n"
 		"\t-b Include BOM with Unicode data\n"
@@ -119,7 +125,7 @@ usage(void)
 void
 version(void)
 {
-	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.21 $\n\n", argv0);
+	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.22 $\n\n", argv0);
 	printf( "(C) Copyright 1994-2005 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -167,6 +173,51 @@ get_val(const struct s_keyval *kv, int len, const char *key)
 	exit(1);
 }
 
+/*
+ * Return the name of a predefined clipboard format name.
+ * Return NULL if this name is not known.
+ *
+ */
+static const char *
+predefined_name(int n)
+{
+	static char buff[256];
+
+	if (n >= CF_GDIOBJFIRST && n <= CF_GDIOBJLAST) {
+		sprintf(buff, "CF_GDIOBJ%d", n);
+		return buff;
+	} else if (n >= CF_PRIVATEFIRST && n <= CF_PRIVATELAST) {
+		sprintf(buff, "CF_PRIVATE%d", n);
+		return buff;
+	}
+	switch (n) {
+	case CF_BITMAP:		 return "CF_BITMAP";
+	case CF_DIB:		 return "CF_DIB";
+	case CF_DIBV5:		 return "CF_DIBV5";
+	case CF_DIF:		 return "CF_DIF";
+	case CF_DSPBITMAP:	 return "CF_DSPBITMAP";
+	case CF_DSPENHMETAFILE:	 return "CF_DSPENHMETAFILE";
+	case CF_DSPMETAFILEPICT: return "CF_DSPMETAFILEPICT";
+	case CF_DSPTEXT:	 return "CF_DSPTEXT";
+	case CF_ENHMETAFILE:	 return "CF_ENHMETAFILE";
+	case CF_HDROP:		 return "CF_HDROP";
+	case CF_LOCALE:		 return "CF_LOCALE";
+	case CF_METAFILEPICT:	 return "CF_METAFILEPICT";
+	case CF_OEMTEXT:	 return "CF_OEMTEXT";
+	case CF_OWNERDISPLAY:	 return "CF_OWNERDISPLAY";
+	case CF_PALETTE:	 return "CF_PALETTE";
+	case CF_PENDATA:	 return "CF_PENDATA";
+	case CF_RIFF:		 return "CF_RIFF";
+	case CF_SYLK:		 return "CF_SYLK";
+	case CF_TEXT:		 return "CF_TEXT";
+	case CF_WAVE:		 return "CF_WAVE";
+	case CF_TIFF:		 return "CF_TIFF";
+	case CF_UNICODETEXT:	 return "CF_UNICODETEXT";
+	}
+	return NULL;
+}
+
+
 // I/O chunk
 #define CHUNK 1024
 
@@ -182,7 +233,7 @@ main(int argc, char *argv[])
 	size_t bsiz, remsiz;	/* Buffer, size, remaining size */
 	size_t total;		/* Total read */
 	int n;
-	enum {O_NONE, O_COPY, O_PASTE} operation = O_NONE;
+	enum {O_NONE, O_COPY, O_PASTE, O_INFO} operation = O_NONE;
 	unsigned int textfmt = CF_OEMTEXT;
 	int c;
 	char *clipdata;		/* Pointer to the clipboard data */
@@ -193,7 +244,7 @@ main(int argc, char *argv[])
 	int langid = LANG_NEUTRAL, sublangid = SUBLANG_DEFAULT;
 
 	argv0 = argv[0];
-	while ((c = getopt(argc, argv, "vhuwcpmbl:s:")) != EOF)
+	while ((c = getopt(argc, argv, "vhuwcpimbl:s:")) != EOF)
 		switch (c) {
 		case 'b':
 			bom = 1;
@@ -224,6 +275,11 @@ main(int argc, char *argv[])
 				usage();
 			operation = O_PASTE;
 			break;
+		case 'i':
+			if (operation != O_NONE)
+				usage();
+			operation = O_INFO;
+			break;
 		case 'l':
 			if (!optarg)
 				usage();
@@ -247,6 +303,23 @@ main(int argc, char *argv[])
 		usage();
 
 	switch (operation) {
+	case O_INFO:
+		if (!OpenClipboard(NULL))
+			error("Unable to open clipboard");
+		for (n = EnumClipboardFormats(0); n; n = EnumClipboardFormats(n)) {
+			char buff[1024];
+			LPCSTR fmtname;
+			if ((fmtname = predefined_name(n)) == NULL) {
+				if (GetClipboardFormatName(n, buff, sizeof(buff)) == 0)
+					error("Unable to get clipboard format name");
+				fmtname = buff;
+			}
+			printf("%s\n", fmtname);
+		}
+		if (GetLastError() != ERROR_SUCCESS)
+			error("Error enumerating clipboard formats");
+		CloseClipboard();
+		break;
 	case O_PASTE:
 		/*
 		 * Paste the Windows clipboard to standard output
