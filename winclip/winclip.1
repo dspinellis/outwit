@@ -1,5 +1,5 @@
-.TH WINCLIP 1 "5 December 2005"
-.\" (C) Copyright 1998-2005 Diomidis Spinellis.  All rights reserved.
+.TH WINCLIP 1 "10 March 2006"
+.\" (C) Copyright 1998-2006 Diomidis Spinellis.  All rights reserved.
 .\"
 .\" Permission to use, copy, and distribute this software and its
 .\" documentation for any purpose and without fee is hereby granted,
@@ -11,14 +11,14 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.12 2005-12-05 20:31:38 dds Exp $
+.\" $Id: winclip.1,v 1.13 2006-03-10 12:55:52 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
 .SH SYNOPSIS
 \fBwinclip\fP
 [\fB\-h\fP|\fB\-v\fP]
-[\fB\-w\fP|\fB\-u\fP\fB\-m\fP]
+[\fB\-w\fP|\fB\-u\fP|\fB\-m\fP|\fB\-g\fP]
 [\fB\-b\fP]
 [\fB\-l\fP \fIlang\fP]
 [\fB\-s\fP \fIsublang\fP]
@@ -108,6 +108,10 @@ is probably not a good idea.
 The combination of the default language and sublanguage identifiers in
 effect result in the clipboard data getting marked as belonging to the
 user default language.
+.IP "\fB\-g\fP"
+Specify that the data to be copied into the clipboard is a graphics image.
+This function uses a Windows OLE interface for loading image files.
+It has been tested with JPEG, GIF, and BMP files.
 .IP "\fB\-v\fP"
 Print the program's version on the standard output and exit.
 .IP "\fB\-h\fP"
@@ -156,7 +160,7 @@ window it is running is different from the code page of the clipboard
 data or the code page it is specified to use.
 You can check and change a console code page using the \fIchcp\fP command.
 .LP
-In operations involving 8-bit (non-Unicde) data,
+In operations involving 8-bit (non-Unicode) data,
 the input locale (that's right, the active keyboard translation)
 in effect at the time the text is placed in the clipboard
 determines the character set associated with the clipboard data.
