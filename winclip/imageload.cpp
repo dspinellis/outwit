@@ -13,11 +13,15 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: imageload.cpp,v 1.2 2006-03-10 12:48:12 dds Exp $
+ * $Id: imageload.cpp,v 1.3 2006-03-10 17:12:49 dds Exp $
  *
  */
 
 #include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <io.h>
 #include <windows.h>
 #include <olectl.h>
 #include <ole2.h>
@@ -25,14 +29,39 @@
 extern "C" HBITMAP
 image_load(FILE * fp)
 {
-	// Allocate memory and load the image
-	fseek(fp, 0, SEEK_END);
-	long fsize = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	HGLOBAL memory = GlobalAlloc(GPTR, fsize);
-	if (!memory)
+	HGLOBAL memory;
+	long fsize, n;
+	struct stat sb;
+
+	// Read it as a binary file
+	if (_setmode(_fileno(fp), _O_BINARY) == -1)
 		return NULL;
-	fread((void *)memory, 1, fsize, fp);
+
+	// Allocate memory and load the image
+	if (fstat(fileno(fp), &sb) == -1 || (sb.st_mode & _S_IFREG) == 0) {
+		// Non-seekable stream; read by adjusting memory
+		long n, currsize = 4096, currptr = 0;
+		if ((memory = GlobalAlloc(GPTR, currsize)) == NULL)
+			return NULL;
+		const int BLOCK = 4096;
+		while ((n = fread((char *)memory + currptr, 1, BLOCK, fp)) == BLOCK) {
+			currptr += BLOCK;
+			if (currptr >= currsize) {
+				currsize *= 2;
+				if ((memory = GlobalReAlloc(memory, currsize, GMEM_MOVEABLE)) == NULL)
+					return NULL;
+			}
+		}
+		if (ferror(fp))
+			return NULL;
+		fsize = currptr + n;
+	} else {
+		fsize = sb.st_size;
+		if ((memory = GlobalAlloc(GPTR, fsize)) == NULL)
+			return NULL;
+		if ((n = fread(memory, 1, fsize, fp)) != fsize)
+			return NULL;
+	}
 
 	// Load the image with OLE magic
 	LPSTREAM stream = NULL;
