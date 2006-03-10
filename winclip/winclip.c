@@ -1,7 +1,7 @@
 /*
  * Copy/Paste the Windows Clipboard
  *
- * (C) Copyright 1994-2004 Diomidis Spinellis
+ * (C) Copyright 1994-2006 Diomidis Spinellis
  *
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.23 2005-12-05 20:49:06 dds Exp $
+ * $Id: winclip.c,v 1.24 2006-03-10 12:48:12 dds Exp $
  *
  */
 
@@ -40,6 +40,8 @@ static int bom = 0;
 static int multibyte = 0;
 /* True if big-endian BOM */
 static int big_endian = 0;
+/* True if graphics image bitmap */
+static int bitmap = 0;
 
 /* Other flags */
 /* Text format */
@@ -101,7 +103,7 @@ unicode_fputs(const wchar_t *str, FILE *iofile)
 }
 
 static char *usage_string =
-	"usage: %s [-v|h] [-w|u|m] [-l lang] [-s sublang] [-b] -c|-p|-i [filename]\n";
+	"usage: %s [-v|h] [-w|u|m|g] [-l lang] [-s sublang] [-b] -c|-p|-i [filename]\n";
 
 void
 help(void)
@@ -118,6 +120,7 @@ help(void)
 		"\t-w Data is in the Windows code page (OEM code page is the default)\n"
 		"\t-l Specify the language for the data to be copied\n"
 		"\t-s Specify the sublanguage for the data to be copied\n"
+		"\t-g Data to be copied is a graphics bitmap image\n"
 	);
 	exit(0);
 }
@@ -133,8 +136,8 @@ usage(void)
 void
 version(void)
 {
-	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.23 $\n\n", argv0);
-	printf( "(C) Copyright 1994-2005 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.24 $\n\n", argv0);
+	printf( "(C) Copyright 1994-2006 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -344,7 +347,7 @@ paste(const char *fname, FILE *iofile)
  * Copy our input to the Windows Clipboard
  */
 static void
-copy(const char *fname, FILE *iofile)
+copy_text(FILE *iofile)
 {
 	char *b, *bp;		/* Buffer, pointer to buffer insertion point */
 	HANDLE cb_hnd;		/* Clipboard memory handle */
@@ -355,12 +358,6 @@ copy(const char *fname, FILE *iofile)
 	char *clipdata;		/* Pointer to the clipboard data */
 	LCID *plcid;		/* Locale id pointer */
 
-	if (!OpenClipboard(NULL))
-		error("Unable to open the clipboard");
-	if (!EmptyClipboard()) {
-		CloseClipboard();
-		error("Unable to empty the clipboard");
-	}
 
 	/* Read stdin into buffer */
 	setmode(fileno(iofile), O_BINARY);
@@ -452,13 +449,23 @@ copy(const char *fname, FILE *iofile)
 	*plcid = MAKELCID(MAKELANGID(langid, sublangid), SORT_DEFAULT);
 	GlobalUnlock(lc_hnd);
 	SetClipboardData(CF_LOCALE, lc_hnd);
-	CloseClipboard();
-	if (ferror(iofile)) {
-		perror(fname);
-		exit(1);
-	}
 }
 
+
+HBITMAP image_load(FILE * fp);
+
+void
+copy_bitmap(FILE *f)
+{
+	HBITMAP hb;
+	hb = image_load(f);
+	if (hb)
+		SetClipboardData(CF_BITMAP, hb);
+	else {
+		CloseClipboard();
+		error("Unable to load the graphics image bitmap");
+	}
+}
 
 int getopt(int argc, char *argv[], char *optstring);
 extern char	*optarg;	/* Global argument pointer. */
@@ -472,7 +479,7 @@ main(int argc, char *argv[])
 	char *fname;		/* and its file name */
 
 	argv0 = argv[0];
-	while ((c = getopt(argc, argv, "vhuwcpimbl:s:")) != EOF)
+	while ((c = getopt(argc, argv, "gvhuwcpimbl:s:")) != EOF)
 		switch (c) {
 		case 'b':
 			bom = 1;
@@ -518,6 +525,9 @@ main(int argc, char *argv[])
 				usage();
 			sublangid = get_val(sublang, sizeof(sublang) / sizeof(*sublang), optarg);
 			break;
+		case 'g':
+			bitmap = TRUE;
+			break;
 		case 'v':
 			version();
 			break;
@@ -548,7 +558,7 @@ main(int argc, char *argv[])
 		break;
 	case O_COPY:
 		if (argc - optind == 1) {
-			if ((iofile = fopen(fname = argv[optind], "r")) == NULL) {
+			if ((iofile = fopen(fname = argv[optind], bitmap ? "rb" : "r")) == NULL) {
 				perror(argv[optind]);
 				return (1);
 			}
@@ -556,7 +566,21 @@ main(int argc, char *argv[])
 			iofile = stdin;
 			fname = "standard input";
 		}
-		copy(fname, iofile);
+		if (!OpenClipboard(NULL))
+			error("Unable to open the clipboard");
+		if (!EmptyClipboard()) {
+			CloseClipboard();
+			error("Unable to empty the clipboard");
+		}
+		if (bitmap)
+			copy_bitmap(iofile);
+		else
+			copy_text(iofile);
+		CloseClipboard();
+		if (ferror(iofile)) {
+			perror(fname);
+			exit(1);
+		}
 		break;
 	case O_NONE:
 		usage();

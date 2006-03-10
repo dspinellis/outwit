@@ -2,8 +2,8 @@ NAME=winclip
 UXHOST=spiti
 SSH=plink
 
-winclip.exe: winclip.c getopt.c lang.h
-	cl winclip.c getopt.c user32.lib shell32.lib gdi32.lib
+winclip.exe: winclip.c getopt.c imageload.cpp lang.h
+	cl winclip.c getopt.c imageload.cpp user32.lib shell32.lib gdi32.lib olepro32.lib uuid.lib ole32.lib
 
 lang.h: lang.pl
 	perl $? 'c:/program files/devstudio/vc/include/winnt.h' >$@
