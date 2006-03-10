@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: imageload.cpp,v 1.3 2006-03-10 17:12:49 dds Exp $
+ * $Id: imageload.cpp,v 1.4 2006-03-10 18:34:00 dds Exp $
  *
  */
 
@@ -63,25 +63,55 @@ image_load(FILE * fp)
 			return NULL;
 	}
 
-	// Load the image with OLE magic
-	LPSTREAM stream = NULL;
-	if (CreateStreamOnHGlobal(memory, TRUE, &stream) != S_OK) {
-		GlobalFree(memory);
-		return NULL;
-	}
-	IPicture *picture;
-	if (OleLoadPicture(stream, 0, 0, IID_IPicture, (void **)&picture) != S_OK) {
+	int x, y, maxval, nchars;
+	if (sscanf((const char *)memory, "P6\n%d %d\n%d\n%n", &x, &y, &maxval, &nchars) == 3 && maxval == 255) {
+		// Convert PPM into a Windows bitmap
+		BITMAPINFO info;
+		info.bmiHeader.biSize = sizeof(info.bmiHeader);
+		info.bmiHeader.biWidth = x;
+		info.bmiHeader.biHeight = 0 - y;
+		info.bmiHeader.biPlanes = 1;
+		info.bmiHeader.biBitCount = 24;
+		info.bmiHeader.biCompression = BI_RGB;
+		info.bmiHeader.biSizeImage = 0;
+		info.bmiHeader.biXPelsPerMeter = 2834;
+		info.bmiHeader.biXPelsPerMeter = 2834;
+		info.bmiHeader.biClrUsed = 0;
+		info.bmiHeader.biClrImportant = 0;
+		// Swap the data to Windows format
+		int swap;
+		char *data = (char *)memory + nchars;
+		int len = 3 * x * y;
+		for (int i = 0; i < len; i += 3) {
+			swap = data[i + 1];
+			data[i + 1] = data[i + 0];
+			data[i + 0] = swap;
+		}
+		printf("Bitmap %d %d %d %d\n", x, y, nchars, len);
+		HBITMAP hb = CreateDIBitmap(GetDC(NULL), &info.bmiHeader, CBM_INIT, data, &info, 0);
+		printf("%x\n", hb);
+		return hb;
+	} else {
+		// Load the image with OLE magic
+		LPSTREAM stream = NULL;
+		if (CreateStreamOnHGlobal(memory, TRUE, &stream) != S_OK) {
+			GlobalFree(memory);
+			return NULL;
+		}
+		IPicture *picture;
+		if (OleLoadPicture(stream, 0, 0, IID_IPicture, (void **)&picture) != S_OK) {
+			stream->Release();
+			GlobalFree(memory);
+			return NULL;
+		}
+
+		// Free resources; copy the image to an allocated bitmap
 		stream->Release();
 		GlobalFree(memory);
-		return NULL;
+		HBITMAP	bitmap = 0;
+		picture->get_Handle((unsigned int *)&bitmap);
+		HBITMAP	hBB = (HBITMAP)CopyImage(bitmap, IMAGE_BITMAP, 0, 0, LR_COPYRETURNORG);
+		picture->Release();
+		return hBB;
 	}
-
-	// Free resources; copy the image to an allocated bitmap
-	stream->Release();
-	GlobalFree(memory);
-	HBITMAP	bitmap = 0;
-	picture->get_Handle((unsigned int *)&bitmap);
-	HBITMAP	hBB = (HBITMAP)CopyImage(bitmap, IMAGE_BITMAP, 0, 0, LR_COPYRETURNORG);
-	picture->Release();
-	return hBB;
 }

@@ -13,7 +13,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winclip.c,v 1.24 2006-03-10 12:48:12 dds Exp $
+ * $Id: winclip.c,v 1.25 2006-03-10 18:34:00 dds Exp $
  *
  */
 
@@ -136,7 +136,7 @@ usage(void)
 void
 version(void)
 {
-	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.24 $\n\n", argv0);
+	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.25 $\n\n", argv0);
 	printf( "(C) Copyright 1994-2006 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -558,7 +558,7 @@ main(int argc, char *argv[])
 		break;
 	case O_COPY:
 		if (argc - optind == 1) {
-			if ((iofile = fopen(fname = argv[optind], bitmap ? "rb" : "r")) == NULL) {
+			if ((iofile = fopen(fname = argv[optind], "r")) == NULL) {
 				perror(argv[optind]);
 				return (1);
 			}

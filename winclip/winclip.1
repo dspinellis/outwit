@@ -11,7 +11,7 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winclip.1,v 1.13 2006-03-10 12:55:52 dds Exp $
+.\" $Id: winclip.1,v 1.14 2006-03-10 18:34:00 dds Exp $
 .\"
 .SH NAME
 winclip \- console Windows clipboard interface
@@ -110,8 +110,10 @@ effect result in the clipboard data getting marked as belonging to the
 user default language.
 .IP "\fB\-g\fP"
 Specify that the data to be copied into the clipboard is a graphics image.
-This function uses a Windows OLE interface for loading image files.
-It has been tested with JPEG, GIF, and BMP files.
+The program uses builtin code for loading
+8-bit portable pixmap files (files starting with the P6 magic number),
+and a Windows OLE interface for loading many other image files.
+The OLE interface has been tested with JPEG, GIF, and BMP files.
 .IP "\fB\-v\fP"
 Print the program's version on the standard output and exit.
 .IP "\fB\-h\fP"
