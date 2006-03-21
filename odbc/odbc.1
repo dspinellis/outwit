@@ -11,7 +11,7 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: odbc.1,v 1.2 2003-12-02 12:33:15 dds Exp $
+.\" $Id: odbc.1,v 1.3 2006-03-21 07:09:57 dds Exp $
 .\"
 .SH NAME
 odbc \- provide ODBC-based database access
@@ -35,14 +35,14 @@ newline.
 The select statement specified must conform to the syntax and conventions used
 by the database being accessed.
 .LP
-The driver connection string can either specify a registered data source
+The driver connection string can either specify a registered system data source
 driver name, as in:
 .br
         "DSN=registered_dsn_name;uid=myusername;pwd=mypassword"
 .br
 or directly a driver, as in:
 .br
-        "Driver={Microsoft Access Driver (*.mdb)};DBQ=myfile.mdb"
+        "Driver={Microsoft Access Driver (*.mdb)};DBQ=c:\\db\\myfile.mdb"
 .br
 Data source drivers are typically configured through the
 control panel (ODBC category or through the Administrative Tools menu).
