@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: readlog.c,v 1.14 2004-11-19 14:46:43 dds Exp $
+ * $Id: readlog.c,v 1.15 2006-09-04 16:43:28 dds Exp $
  *
  */
 
@@ -47,7 +47,7 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr,
-		"readlog - Windows event log text-based access.  $Revision: 1.14 $\n"
+		"readlog - Windows event log text-based access.  $Revision: 1.15 $\n"
 		"(C) Copyright 2002 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -372,9 +372,11 @@ print_msg(EVENTLOGRECORD *pelr, char *source)
 			printf(": ");
 			LocalFree(category);
 		} else {
+			#ifdef WARNINGS
 			fprintf(stderr, "%s\\", key);
 			wperror("CategoryMessageFile", ret);
-			printf("%d: ", pelr->EventCategory);
+			#endif
+			printf("UNKWNOWN_%d: ", pelr->EventCategory);
 		}
 	}
 	/* Event type */
