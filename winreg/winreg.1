@@ -11,7 +11,7 @@
 .\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
 .\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 .\"
-.\" $Id: winreg.1,v 1.4 2003-12-07 10:20:34 dds Exp $
+.\" $Id: winreg.1,v 1.5 2010-11-10 16:04:51 dds Exp $
 .\"
 .SH NAME
 winreg \- text-based access to the Windows registry
@@ -42,6 +42,11 @@ the data bytes as character-separated two digit hexadecimal values.
 .IP "REG_DWORD"
 \fIWinreg\fP will print the word DWORD followed by 
 the value using eight hexadecimal digits.
+.IP "REG_DWORD_BIG_ENDIAN"
+\fIWinreg\fP will print the word DWORD_BIG_ENDIAN followed by 
+the value using eight hexadecimal digits.
+The value's digits are printed so as to represent a base16 number,
+i.e. the number 1 is printed as 00000001, not 00010000.
 .IP "REG_QWORD"
 \fIWinreg\fP will print the word QWORD followed by 
 the value using 16 hexadecimal digits.

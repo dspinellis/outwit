@@ -2,7 +2,7 @@
  *
  * winreg - Windows registry text-based access
  *
- * (C) Copyright 1999-2003 Diomidis Spinellis
+ * (C) Copyright 1999-2010 Diomidis Spinellis
  * 
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -14,7 +14,7 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: winreg.c,v 1.11 2003-12-22 13:51:00 dds Exp $
+ * $Id: winreg.c,v 1.12 2010-11-10 16:04:51 dds Exp $
  *
  */
 
@@ -85,13 +85,14 @@ print_value(int type, unsigned char *data, int len)
 		if (o_print_name)
 			putchar(field_sep);
 		switch (type) {
+		case REG_NONE: printf("NONE"); break;
+		case REG_SZ: printf("SZ"); break;
+		case REG_EXPAND_SZ: printf("EXPAND_SZ"); break;
 		case REG_BINARY: printf("BINARY"); break;
 		case REG_DWORD: printf("DWORD"); break;
-		case REG_SZ: printf("SZ"); break;
-		case REG_MULTI_SZ: printf("MULTI_SZ"); break;
-		case REG_EXPAND_SZ: printf("EXPAND_SZ"); break;
-		case REG_NONE: printf("NONE"); break;
+		case REG_DWORD_BIG_ENDIAN: printf("DWORD_BIG_ENDIAN"); break;
 		case REG_LINK: printf("LINK"); break;
+		case REG_MULTI_SZ: printf("MULTI_SZ"); break;
 		case REG_RESOURCE_LIST: printf("RESOURCE_LIST"); break;
 		case REG_FULL_RESOURCE_DESCRIPTOR: printf("FULL_RESOURCE_DESCRIPTOR"); break;
 		case REG_RESOURCE_REQUIREMENTS_LIST: printf("RESOURCE_REQUIREMENTS_LIST"); break;
@@ -137,6 +138,12 @@ print_value(int type, unsigned char *data, int len)
 				printf("%u", *(unsigned int *)data);
 			else
 				printf("%08x", *(unsigned int *)data);
+			break;
+		case REG_DWORD_BIG_ENDIAN:
+			if (o_print_decimal)
+				printf("%u", (((unsigned short *)data)[0] << 16) | ((unsigned short *)data)[1]);
+			else
+				printf("%08x", (((unsigned short *)data)[0] << 16) | ((unsigned short *)data)[1]);
 			break;
 		case REG_MULTI_SZ:
 		case REG_EXPAND_SZ:
@@ -319,6 +326,7 @@ struct s_nameval handles[] = {
 struct s_nameval types[] = {
 	{"BINARY", REG_BINARY},
 	{"DWORD", REG_DWORD},
+	{"DWORD_BE", REG_DWORD_BIG_ENDIAN},
 	{"SZ", REG_SZ},
 	{"MULTI_SZ", REG_MULTI_SZ},
 	{"EXPAND_SZ", REG_EXPAND_SZ},
@@ -351,8 +359,8 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"winreg - Windows registry text-based access.  $Revision: 1.11 $\n"
-		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+		"winreg - Windows registry text-based access.  $Revision: 1.12 $\n"
+		"(C) Copyright 1999-2010 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -553,18 +561,27 @@ input_process(void)
 		case REG_FULL_RESOURCE_DESCRIPTOR:
 		case REG_RESOURCE_REQUIREMENTS_LIST:
 			if (c == '\n') {
-				if (typeval == REG_DWORD) {
+				switch (typeval) {
+				case REG_DWORD:
 					if (dataidx != 4) {
 						fprintf(stderr, "Line :%d: not a four byte DWORD\n", line);
 						exit(1);
 					}
 					swapbytes(data, dataidx);
-				} else if (typeval == REG_QWORD) {
+					break;
+				case REG_DWORD_BIG_ENDIAN:
+					if (dataidx != 4) {
+						fprintf(stderr, "Line :%d: not a four byte REG_DWORD_BIG_ENDIAN\n", line);
+						exit(1);
+					}
+					break;
+				case REG_QWORD:
 					if (dataidx != 8) {
 						fprintf(stderr, "Line :%d: not an eight byte QWORD\n", line);
 						exit(1);
 					}
 					swapbytes(data, dataidx);
+					break;
 				}
 		addkey:
 				addkey(name, typeval, data, dataidx);
