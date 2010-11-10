@@ -2,19 +2,19 @@
  *
  * odbc - select data from relational databases
  *
- * (C) Copyright 1999-2003 Diomidis Spinellis
- * 
+ * (C) Copyright 1999-2010 Diomidis Spinellis
+ *
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
  * provided that the above copyright notice appear in all copies and that
  * both that copyright notice and this permission notice appear in
  * supporting documentation.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: odbc.c,v 1.5 2003-12-02 12:33:15 dds Exp $
+ * $Id: odbc.c,v 1.6 2010-11-10 15:31:43 dds Exp $
  *
  */
 
@@ -45,7 +45,7 @@ static void
 version(void)
 {
 	printf(
-		"odbc - select data from relational databases.  $Revision: 1.5 $\n"
+		"odbc - select data from relational databases.  $Revision: 1.6 $\n"
 		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
@@ -63,9 +63,10 @@ static void
 usage(char *fname)
 {
 	fprintf(stderr, 
-		"usage: %s [-v] [-R RS] [-F FS] [-h] DRVC stmt\n"
+		"usage: %s [-v] [-R RS] [-F FS] [-h] [-n null] DRVC stmt\n"
 		"\tRS\tRecord separator (default is newline)\n"
 		"\tFS\tField separator (default is tab)\n"
+		"\tnull\tNull value string (default is empty)\n"
 		"\tDRVC\tODBC driver connection string\n"
 		"\t-h\tPrint column headings on first line\n"
 		"\t-v\tPrint the program's version and copyright string\n"
@@ -103,6 +104,7 @@ main(int argc, char *argv[])
 	int		headings = 0;
 	SQLSMALLINT	numcol, i;
 	char		*field_sep = "\t";
+	char		*null_string = NULL;
 	char		*rec_sep = "\n";
 	SQLHENV         henv = SQL_NULL_HENV;
 	SQLHDBC         hdbc1 = SQL_NULL_HDBC;
@@ -110,7 +112,7 @@ main(int argc, char *argv[])
 	SQLHDESC        hdesc = NULL;
 	char		c;
 
-	while ((c = getopt(argc, argv, "vR:F:h")) != EOF)
+	while ((c = getopt(argc, argv, "vR:F:hn:")) != EOF)
 		switch (c) {
 		case 'v':
 			version();
@@ -127,6 +129,11 @@ main(int argc, char *argv[])
 			break;
 		case 'h':
 			headings = 1;
+			break;
+		case 'n':
+			if (!optarg)
+				usage(argv[0]);
+			null_string = strdup(optarg);
 			break;
 		case '?':
 			usage(argv[0]);
@@ -191,6 +198,8 @@ main(int argc, char *argv[])
 				for (i = 1; i <= numcol; i++) {
 					if (coldata[i].io_len != SQL_NULL_DATA)
 						fputs(coldata[i].data, stdout);
+					else if (null_string != NULL)
+						fputs(null_string, stdout);
 					if (i < numcol)
 						fputs(field_sep, stdout);
 				}
