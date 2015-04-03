@@ -1,7 +1,7 @@
 /*
- * Load an image from a file using OLE
+ * Load an image from a file using the Windows codecs
  *
- * (C) Copyright 2006 Diomidis Spinellis
+ * (C) Copyright 2006-2015 Diomidis Spinellis
  *
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -13,9 +13,18 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: imageload.cpp,v 1.4 2006-03-10 18:34:00 dds Exp $
- *
  */
+
+#include <wincodec.h>
+#include <wincodecsdk.h>
+#pragma comment(lib, "WindowsCodecs.lib")
+#include <atlbase.h>
+
+#include <iostream>
+#include <sstream>
+#include <string>
+
+using namespace std;
 
 #include <stdio.h>
 #include <errno.h>
@@ -23,13 +32,132 @@
 #include <sys/stat.h>
 #include <io.h>
 #include <windows.h>
-#include <olectl.h>
-#include <ole2.h>
+#include <atlbase.h>
+
+// Return a string representing the specified Windows error
+static string
+windowsError(int err)
+{
+	LPVOID lpMsgBuf;
+
+	if (!FormatMessage(
+	    FORMAT_MESSAGE_ALLOCATE_BUFFER |
+	    FORMAT_MESSAGE_FROM_SYSTEM |
+	    FORMAT_MESSAGE_IGNORE_INSERTS,
+	    NULL,
+	    err,
+	    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* Default language */
+	    (LPTSTR) &lpMsgBuf,
+	    0,
+	    NULL
+	)) {
+		ostringstream s;
+		// See http://msdn.microsoft.com/en-us/library/windows/desktop/ee719669%28v=vs.85%29.aspx
+		s << "Unknown error " << err << " 0x" << hex << err;
+		return s.str();
+	}
+
+	string r((char *)lpMsgBuf);
+	LocalFree(lpMsgBuf);
+	return r;
+}
+
+static HGLOBAL memory = 0;
+
+// Exit with an error if the specified Windows API function fails
+#define CHECK(x) do { \
+	int ret; \
+	if ((ret = (x)) != S_OK) { \
+		fprintf(stderr, "Cannot process image file: " #x ": %s", windowsError(ret).c_str()); \
+		if (memory) \
+			GlobalFree(memory); \
+		exit(1); \
+	} \
+} while(0)
+
+
+// Convert stream data into a bitmap and return it
+static HBITMAP
+ImageReadStream(IStream *stream)
+{
+
+	int ret;
+
+	switch (ret = CoInitializeEx(NULL, COINIT_MULTITHREADED)) {
+	case S_OK:
+	case S_FALSE:	// Already initialized
+		break;
+	default:
+		CHECK(("CoInitialize", 0));
+	}
+
+	CComPtr<IWICImagingFactory> factory;
+	CHECK(CoCreateInstance(CLSID_WICImagingFactory, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory)));
+
+	CComPtr<IWICBitmapDecoder> decoder;
+	CHECK(factory->CreateDecoderFromStream(stream, 0,  WICDecodeMetadataCacheOnDemand, &decoder));
+
+	CComPtr<IWICBitmapFrameDecode> frame;
+	CHECK(decoder->GetFrame(0, &frame));
+	UINT width = 0;
+	UINT height = 0;
+	CHECK(frame->GetSize(&width, &height));
+
+	CComPtr<IWICFormatConverter> format_converter;
+	CHECK(factory->CreateFormatConverter(&format_converter));
+
+	// Initialize the format converter.
+	CHECK(format_converter->Initialize(
+		frame,                  	 // Input source to convert
+		GUID_WICPixelFormat32bppPBGRA,   // Destination pixel format
+		WICBitmapDitherTypeNone,         // Specified dither pattern
+		NULL,                            // Specify a particular palette
+		0.f,                             // Alpha threshold
+		WICBitmapPaletteTypeCustom       // Palette translation type
+	));
+
+
+	/*
+	 * Convert the passed IWICBitmapSource into a Windows bitmap
+	 * and return it.
+	 */
+	HBITMAP res = 0;
+
+	unsigned int stride = (width * 32 + 7) / 8;
+	unsigned int buffer_size = stride * height;
+
+	BYTE* buffer = (BYTE*)malloc(buffer_size);
+	CHECK(format_converter->CopyPixels(0, stride, buffer_size, buffer));
+
+
+	BITMAPINFOHEADER bh;
+
+	bh.biSize = sizeof(bh);
+	bh.biWidth = width;
+	bh.biHeight = -(int)height;	// Top-down DIB
+	bh.biPlanes = 1;
+	bh.biBitCount = 32;
+	bh.biCompression = BI_RGB;
+	bh.biSizeImage =
+	bh.biXPelsPerMeter =
+	bh.biYPelsPerMeter =
+	bh.biClrUsed =
+	bh.biClrImportant = 0;
+
+	BITMAPINFO bi;
+
+	bi.bmiHeader = bh;
+
+	res = CreateDIBitmap(::GetDC(NULL), &bh, CBM_INIT, buffer, &bi, DIB_RGB_COLORS);
+
+	free(buffer);
+
+	return res;
+}
 
 extern "C" HBITMAP
 image_load(FILE * fp)
 {
-	HGLOBAL memory;
 	long fsize, n;
 	struct stat sb;
 
@@ -92,26 +220,13 @@ image_load(FILE * fp)
 		printf("%x\n", hb);
 		return hb;
 	} else {
-		// Load the image with OLE magic
+		// Load the image with Windows codecs
 		LPSTREAM stream = NULL;
-		if (CreateStreamOnHGlobal(memory, TRUE, &stream) != S_OK) {
-			GlobalFree(memory);
-			return NULL;
-		}
-		IPicture *picture;
-		if (OleLoadPicture(stream, 0, 0, IID_IPicture, (void **)&picture) != S_OK) {
-			stream->Release();
-			GlobalFree(memory);
-			return NULL;
-		}
-
+		CHECK(CreateStreamOnHGlobal(memory, TRUE, &stream));
+		HBITMAP	bitmap = ImageReadStream(stream);
 		// Free resources; copy the image to an allocated bitmap
-		stream->Release();
 		GlobalFree(memory);
-		HBITMAP	bitmap = 0;
-		picture->get_Handle((unsigned int *)&bitmap);
 		HBITMAP	hBB = (HBITMAP)CopyImage(bitmap, IMAGE_BITMAP, 0, 0, LR_COPYRETURNORG);
-		picture->Release();
 		return hBB;
 	}
 }
