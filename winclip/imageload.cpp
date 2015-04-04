@@ -17,7 +17,6 @@
 
 #include <wincodec.h>
 #include <wincodecsdk.h>
-#pragma comment(lib, "WindowsCodecs.lib")
 #include <atlbase.h>
 
 #include <iostream>
@@ -192,35 +191,55 @@ image_load(FILE * fp)
 	}
 
 	int x, y, maxval, nchars;
-	if (sscanf((const char *)memory, "P6\n%d %d\n%d\n%n", &x, &y, &maxval, &nchars) == 3 && maxval == 255) {
+	// Try to read as a PNM file (also with a comment after P6)
+	if ((sscanf((const char *)memory, "P6\n%d %d\n%d\n%n", &x, &y, &maxval, &nchars) == 3 ||
+	    sscanf((const char *)memory, "P6\n#%*[^\n]\n%d %d\n%d\n%n", &x, &y, &maxval, &nchars) == 3)
+			&& maxval == 255) {
 		// Convert PPM into a Windows bitmap
-		BITMAPINFO info;
-		info.bmiHeader.biSize = sizeof(info.bmiHeader);
-		info.bmiHeader.biWidth = x;
-		info.bmiHeader.biHeight = 0 - y;
-		info.bmiHeader.biPlanes = 1;
-		info.bmiHeader.biBitCount = 24;
-		info.bmiHeader.biCompression = BI_RGB;
-		info.bmiHeader.biSizeImage = 0;
-		info.bmiHeader.biXPelsPerMeter = 2834;
-		info.bmiHeader.biXPelsPerMeter = 2834;
-		info.bmiHeader.biClrUsed = 0;
-		info.bmiHeader.biClrImportant = 0;
-		// Swap the data to Windows format
-		int swap;
-		char *data = (char *)memory + nchars;
-		int len = 3 * x * y;
-		for (int i = 0; i < len; i += 3) {
-			swap = data[i + 1];
-			data[i + 1] = data[i + 0];
-			data[i + 0] = swap;
+
+		BITMAPINFO bi;
+		bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
+		bi.bmiHeader.biWidth = x;
+		bi.bmiHeader.biHeight = 0 - y;
+		bi.bmiHeader.biPlanes = 1;
+		bi.bmiHeader.biBitCount = 24;
+		bi.bmiHeader.biCompression = BI_RGB;
+		bi.bmiHeader.biSizeImage = 0;
+		bi.bmiHeader.biXPelsPerMeter = 2834;
+		bi.bmiHeader.biXPelsPerMeter = 2834;
+		bi.bmiHeader.biClrUsed = 0;
+		bi.bmiHeader.biClrImportant = 0;
+
+		/*
+		 * Swap the data to Windows format and align the rows on a 32-bit boundary
+		 */
+		char *in_data = (char *)memory + nchars;
+		char *win_data = (char *)GlobalAlloc(GPTR, x * (y + 4) * 3);
+		int i_in = 0, i_win = 0;
+		for (int iy = 0; iy < y; iy++) {
+			int ix;
+			for (ix = 0; ix < x; ix++) {
+				win_data[i_win + 0] = in_data[i_in + 1];
+				win_data[i_win + 1] = in_data[i_in + 0];
+				win_data[i_win + 2] = in_data[i_in + 2];
+				i_in += 3;
+				i_win += 3;
+			}
+			while (ix & 3) {
+				ix++;
+				i_win++;
+			}
 		}
-		printf("Bitmap %d %d %d %d\n", x, y, nchars, len);
-		HBITMAP hb = CreateDIBitmap(GetDC(NULL), &info.bmiHeader, CBM_INIT, data, &info, 0);
-		printf("%x\n", hb);
+
+		HDC hdc = GetDC(NULL);
+		HBITMAP hb = CreateDIBitmap(hdc, &bi.bmiHeader, CBM_INIT, win_data, &bi, 0);
+		if (hb == 0) {
+			fprintf(stderr, "Cannot process image file: CreateDIBitmap: %s", windowsError(GetLastError()).c_str());
+			exit(1);
+		}
 		return hb;
 	} else {
-		// Load the image with Windows codecs
+		// Try to load the image with Windows codecs
 		LPSTREAM stream = NULL;
 		CHECK(CreateStreamOnHGlobal(memory, TRUE, &stream));
 		HBITMAP	bitmap = ImageReadStream(stream);
