@@ -11,6 +11,9 @@ NAME=choosecolor
 choosecolor.exe: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $(OBJ) $(LIBS)
 
+choosecolor.obj: choosecolor.c
+	$(CC) -c $(CFLAGS) $<
+
 doc: $(NAME).ps $(NAME).txt $(NAME).pdf $(NAME).html
 
 $(NAME).ps: $(NAME).1

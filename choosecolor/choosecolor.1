@@ -1,0 +1,54 @@
+.TH CHOOSECOLOR 1 "6 July 2006"
+.\" (C) Copyright 2006 Diomidis Spinellis.  All rights reserved.
+.\"
+.\" Permission to use, copy, and distribute this software and its
+.\" documentation for any purpose and without fee for noncommercial use
+.\" is hereby granted, provided that the above copyright notice appear in
+.\" all copies and that both that copyright notice and this permission notice
+.\" appear in supporting documentation.
+.\"
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" $Id$
+.\"
+.SH NAME
+choosecolor \- print the color selected from the Windows color selection dialog box
+.SH SYNOPSIS
+\fBchoosecolor\fP
+[\fIr g b\fP]
+.SH DESCRIPTION
+\fIChoocolor\fP
+will display the Windows color selection dialog control, and pause
+waiting for the user to select a color.
+It will then display on its standard output the color's value
+as a red, green, blue triplet with each value in the range 0-255.
+If the user presses the cancel button, the command will exit
+with a non-zeor return code, and will not print anything.
+.SH OPTIONS
+Three numerical arguments can be passed to specify
+the initial value to be used in the color selection.
+.SH EXAMPLE
+choosecolor 255 0 0
+.br
+will allow the user to choose a color, using pure red as the default value.
+.SH "SEE ALSO"
+D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
+In \fIUSENIX 2000 Technical Conference Proceedings\fP, pages 149-158, San Diego, CA, USA,
+June 2000, USENIX Association.
+
+.SH AUTHOR
+(C) Copyright 1999-2006 Diomidis Spinellis.  All rights reserved.
+.LP
+Permission to use, copy, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation.
+.LP
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.SH BUGS
+It is not possible to distinguish an error exit from a cancel.
