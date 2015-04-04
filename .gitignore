@@ -1,0 +1,14 @@
+*.exe
+*.obj
+*.dsp
+*.dsw
+*.pdb
+*.pdf
+*.ncb
+*.opt
+*.plg
+*/Release
+*.html
+*.ps
+*.txt
+CVS-frozen

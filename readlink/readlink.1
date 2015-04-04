@@ -1,0 +1,58 @@
+.TH READLINK 1 "20 June 2003"
+.\" (C) Copyright 1999, 2000 Diomidis Spinellis.  All rights reserved.
+.\"
+.\" Permission to use, copy, and distribute this software and its
+.\" documentation for any purpose and without fee for noncommercial use
+.\" is hereby granted, provided that the above copyright notice appear in
+.\" all copies and that both that copyright notice and this permission notice
+.\" appear in supporting documentation.
+.\"
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" $Id$
+.\"
+.SH NAME
+readlink \- resolve shell shortcuts
+.SH SYNOPSIS
+\fBreadlink\fP
+\fIlink_file\fP
+.SH DESCRIPTION
+\fIReadlink\fP
+will resolve Windows shell links (shortcuts).
+Its single mandatory argument must be a Windows shortcut.
+\fIReadlink\fP will resolve the shortcut's target and display
+it on its standard output.
+Note that if a shortcut's target is changed (moved, renamed, deleted)
+Windows will attempt to locate the file using a set of heuristics.
+As \fIreadlink\fP uses the Windows API for resolving shortcuts
+it will also try to locate targets.
+provied text-based accedd to the Windows registry.
+
+.SH OPTIONS
+None.
+
+.SH EXAMPLE
+readlink shortcut.lnk
+.br
+will display the shortcut's target file.
+.SH "SEE ALSO"
+D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
+In \fIUSENIX 2000 Technical Conference Proceedings\fP, pages 149-158, San Diego, CA, USA,
+June 2000, USENIX Association.
+
+.SH AUTHOR
+(C) Copyright 1999, 2000 Diomidis Spinellis.  All rights reserved.
+.LP
+Permission to use, copy, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation.
+.LP
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.SH BUGS
+Links to special Windows folders will produce no output.

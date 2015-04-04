@@ -1,0 +1,161 @@
+.TH DOCPROP 1 "26 January 2000"
+.\" (C) Copyright 1999, 2000 Diomidis Spinellis.  All rights reserved.
+.\" 
+.\" Permission to use, copy, and distribute this software and its
+.\" documentation for any purpose and without fee for noncommercial use
+.\" is hereby granted, provided that the above copyright notice appear in
+.\" all copies and that both that copyright notice and this permission notice
+.\" appear in supporting documentation.
+.\" 
+.\" THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+.\" WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+.\" MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.\"
+.\" $Id$
+.\"
+.SH NAME
+docprop \- print properties of an OLE structured storage document
+.SH SYNOPSIS
+\fBdocprop\fP 
+[\fB\-f\fP \fIformat\fP]
+\fIfilename\fP
+\| .\|.\|.
+.SH DESCRIPTION
+\fIDocprop\fP 
+can print the system and user-defined properties of the OLE
+structured storage documents specified in its command line.
+Document properties are typically used to record document
+meta information.
+Typical properties include the document's author, title, and
+keywords.
+By default \fIdocprop\fP will output all known document properties in the form:
+.br
+Property name:value
+.br
+Boolean values are output as TRUE or FALSE,
+integers are output in decimal,
+floating point numbers are output with a precision of two decimal digits,
+absolute time values as yyyy/mm/dd hh:mm:ss,
+and relative time values are output in seconds.
+
+.SH OPTIONS
+.IP "\fB\-f\fP \fIformat\fP"
+Specify the format of the output.
+The format is specified as a string with embedded references to property
+names.
+It is used to format the property output for every document specified.
+The format string can contain three types of of objects:
+.IP
+1. Plain characters which are copied to the output.
+.IP
+2. Character escapes (\\\fIc\fP) which are converted to the corresponding
+control characters and then output.
+The following escape codes are supported:
+\fI\\a, \\b, \\f, \\t, \\r, \\n, \\v, \\\\\fP.
+.IP
+3. Names of system or user-defined property names enclosed in braces;
+these are replaced by the value of the corresponding property.
+.IP
+The following system-defined property values are supported:
+.br
+AppName
+.br
+Author
+.br
+Bytes
+.br
+Category
+.br
+Char Count
+.br
+Comments
+.br
+Company
+.br
+Created
+.br
+Doc Security
+.br
+Edit Time
+.br
+HeadingPairs
+.br
+HiddenSlides
+.br
+Keywords
+.br
+Last Saved
+.br
+Last printed
+.br
+LastAuthor
+.br
+Lines
+.br
+LinksUpToDate
+.br
+MMClips
+.br
+Manager
+.br
+Notes
+.br
+Page Count
+.br
+Paragraphs
+.br
+PresentationTarget
+.br
+Revision Number
+.br
+ScaleCrop
+.br
+Slides
+.br
+Subject
+.br
+Template
+.br
+Thumpnail
+.br
+Title
+.br
+TitlesofParts
+.br
+Word Count
+
+.SH EXAMPLE
+The following will print the document name and author name of all
+Word documents in a directory:
+.br
+docprop -f '{Filename}\t{Author}\\n' *.doc
+
+.SH "SEE ALSO"
+D. Spinellis.  Outwit: Unix tool-based programming meets the Windows world.
+In \fIUSENIX 2000 Technical Conference Proceedings\fP, San Diego, CA, USA,
+June 2000, USENIX Association.
+
+.SH AUTHOR
+(C) Copyright 1999, 2000 Diomidis Spinellis.  All rights reserved.
+.LP
+Permission to use, copy, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation.
+.LP
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+.SH BUGS
+The IPropertyStorage and IPropertySetStorage interfaces used by \fIdocprop\fP
+were not defined in the original release of COM;
+thus \fIdocprop\fP requires one of the following systems:
+.IP \(bu
+Windows NT 4.0 or later 
+.IP \(bu
+Windows 98 or later
+.IP \(bu
+Windows 95 with Internet Explorer version 4.0 or later 
+.IP \(bu
+Windows 95 with DCOM installed 

@@ -3,7 +3,7 @@ CC=cl
 CFLAGS=-nologo -Ox
 OBJ=choosecolor.obj
 LIBS=comdlg32.lib
-NAME=readlink
+NAME=choosecolor
 
 .c.obj:
 	$(CC) -c $(CFLAGS) $?
