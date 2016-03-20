@@ -1,7 +1,7 @@
 /*
  * Copy/Paste the Windows Clipboard
  *
- * (C) Copyright 1994-2006 Diomidis Spinellis
+ * (C) Copyright 1994-2016 Diomidis Spinellis
  *
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -12,8 +12,6 @@
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
- *
- * $Id: winclip.c,v 1.25 2006-03-10 18:34:00 dds Exp $
  *
  */
 
@@ -52,6 +50,9 @@ static int sublangid = SUBLANG_DEFAULT;
 
 /* Program name */
 char *argv0;
+
+// The RTF clipboard format
+static UINT cf_rtf;
 
 static void
 error(char *s)
@@ -103,7 +104,7 @@ unicode_fputs(const wchar_t *str, FILE *iofile)
 }
 
 static char *usage_string =
-	"usage: %s [-v|h] [-w|u|m|g] [-l lang] [-s sublang] [-b] -c|-p|-i [filename]\n";
+	"usage: %s [-v|h] [-w|u|m|g|r] [-l lang] [-s sublang] [-b] -c|-p|-i [filename]\n";
 
 void
 help(void)
@@ -115,6 +116,7 @@ help(void)
 		"\t-p Paste from clipboard\n"
 		"\t-i Print the type of the clipboard's contents\n"
 		"\t-u Data to be copied / pasted is in Unicode format\n"
+		"\t-r Data to be copied in RTF format\n"
 		"\t-m Unicode data is multi-byte\n"
 		"\t-b Include BOM with Unicode data\n"
 		"\t-w Data is in the Windows code page (OEM code page is the default)\n"
@@ -137,7 +139,7 @@ void
 version(void)
 {
 	printf("%s - copy/paste the Windows clipboard.  $Revision: 1.25 $\n\n", argv0);
-	printf( "(C) Copyright 1994-2006 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+	printf( "(C) Copyright 1994-2016 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -479,7 +481,7 @@ main(int argc, char *argv[])
 	char *fname;		/* and its file name */
 
 	argv0 = argv[0];
-	while ((c = getopt(argc, argv, "gvhuwcpimbl:s:")) != EOF)
+	while ((c = getopt(argc, argv, "gvhuwcpimbl:rs:")) != EOF)
 		switch (c) {
 		case 'b':
 			bom = 1;
@@ -494,6 +496,14 @@ main(int argc, char *argv[])
 			if (textfmt != CF_OEMTEXT)
 				usage();
 			textfmt = CF_UNICODETEXT;
+			break;
+		case 'r':
+			if (textfmt != CF_OEMTEXT)
+				usage();
+			cf_rtf = RegisterClipboardFormat("Rich Text Format");
+			if (cf_rtf == 0)
+				error("Unable to register RTF clipboard format");
+			textfmt = cf_rtf;
 			break;
 		case 'w':
 			if (textfmt != CF_OEMTEXT)
