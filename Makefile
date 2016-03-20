@@ -1,8 +1,4 @@
-#
-# $Id: makefile,v 1.6 2005-02-10 15:12:50 dds Exp $
-#
-
-VERSION=1.24
+VERSION=1.25
 BINARY=outwit-bin-$(VERSION).zip
 BINDIR=outwit-bin-$(VERSION)
 SOURCE=outwit-src-$(VERSION).zip
@@ -44,10 +40,9 @@ install:
 
 exezip:
 	rm -f $(BINARY)
-	-cmd /c rd /s/q $(BINDIR)
-	mkdir $(BINDIR)
-	mkdir $(BINDIR)/doc $(BINDIR)/bin
-	mkdir $(BINDIR)/doc/txt $(BINDIR)/doc/html $(BINDIR)/doc/pdf
+	rm -rf $(BINDIR)
+	mkdir -p $(BINDIR)/bin $(BINDIR)/doc/txt $(BINDIR)/doc/html \
+	 $(BINDIR)/doc/pdf
 	cp docprop/release/docprop.exe \
 	 odbc/odbc.exe readlink/readlink.exe winclip/winclip.exe \
 	 winreg/release/winreg.exe readlog/readlog.exe \
@@ -59,12 +54,12 @@ exezip:
 		cp $$i/$$i.pdf $(BINDIR)/doc/pdf ; \
 	done
 	zip -r $(BINARY) $(BINDIR)
-	-cmd /c rd /s/q $(BINDIR)
+	rm -rf $(BINDIR)
 
 sourcezip:
 	rm -f $(SOURCE)
-	-cmd /c rd /s/q $(SRCDIR)
+	rm -rf $(SRCDIR)
 	mkdir $(SRCDIR)
-	sh -c "tar -cf - {docprop,odbc,readlink,winclip,winreg,readlog}/makefile */*.[1ch] */*.mak */*.cpp */*.pl ChangeLog.txt | tar -C $(SRCDIR) -xf -"
+	tar -cf - {docprop,odbc,readlink,winclip,winreg,readlog}/makefile */*.[1ch] */*.mak */*.cpp */*.pl ChangeLog.txt | tar -C $(SRCDIR) -xf -
 	zip -r $(SOURCE) $(SRCDIR)
-	-cmd /c rd /s/q $(SRCDIR)
+	rm -rf $(SRCDIR)
