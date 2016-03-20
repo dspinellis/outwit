@@ -138,6 +138,7 @@ evtype(int type)
 	case EVENTLOG_AUDIT_SUCCESS: return "Success";
 	case EVENTLOG_AUDIT_FAILURE: return "Failure";
 	}
+	return "UNKNOWN";
 }
 
 static void
@@ -331,7 +332,7 @@ print_msg(EVENTLOGRECORD *pelr, char *source)
 	char msgfile[1024];
 	char paramfile[1024];
 	int ret;
-	HANDLE rh;
+	HKEY rh;
 	char *outmsg, *msg;
 	char *argv[1024];
 	int i;
