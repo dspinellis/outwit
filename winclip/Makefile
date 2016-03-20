@@ -5,7 +5,7 @@ winclip.exe: winclip.c getopt.c imageload.cpp lang.h
 	cl /EHsc winclip.c getopt.c imageload.cpp user32.lib shell32.lib gdi32.lib WindowsCodecs.lib
 
 lang.h: lang.pl
-	/usr/bin/perl $? '/cygdrive/c/Program Files (x86)/Windows Kits/8.1/Include/um/winnt.h' >$@
+	/usr/bin/perl $? '/cygdrive/c/Program Files (x86)/Microsoft SDKs/Windows/v7.0A/include/WinNT.h' >$@
 
 
 drop2txt.exe: drop2txt.c
