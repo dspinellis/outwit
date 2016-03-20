@@ -187,7 +187,7 @@ get_builtin_props(IPropertySetStorage * pPropSetStg, REFFMTID fmid, struct pidsi
 	hr = pPropStg->ReadMultiple(nPidsi, pPropSpec, pPropVar);
 
 	if (!FAILED(hr))
-		for (i = 0; i < nPidsi; i++) {
+		for (int i = 0; i < nPidsi; i++) {
 			nvp = new s_nameval;
 			nvp->name = strdup(pidsiArr[i].name);
 			nvp->val = propvariant_string(pPropVar + i, pidsiArr[i].pidsi == PIDSI_EDITTIME);
