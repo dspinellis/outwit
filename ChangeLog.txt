@@ -1,0 +1,110 @@
+Version 1.25
+(March 20 2016)
+
+winclip supports the specification of copied data as RTF
+
+winreg supports the REG_DWORD_BIG_ENDIAN data type
+
+odbc now supports a -n option to specify the printed value of NULL fields.
+(suggested by John McMahon)
+
+winclip now supports a -g option for copying graphics files into the
+clipboard.
+
+The connection example in the odbc application is now correct
+(suggested by Oliver Peters).
+
+winclip now supports a -i option for reporting the available data formats.
+
+Correct memory allocation and locking in winclip. (bug fix)
+
+-----------------------------
+Version 1.24
+(February 10 2005)
+New options in winclip allow the specification of the language
+and sublanguage of the clipboard text.
+-----------------------------
+Version 1.23
+(November 2004)
+Made readlog more robust in the face of invalid data in the registry:
+- Negative event time values would cause the program to crash.
+- Error reporting on missing message sources was misleading.
+-----------------------------
+Version 1.22
+(June 2004).
+Change distribution format to zip files; distributed files reside an
+a correctly-named directory.
+-----------------------------
+Version 21
+(February 2004).
+Update the winclip program to support
+input and output of multi-byte (UTF-8) Unicode characters and
+a byte order mark.
+
+-----------------------------
+Version 20
+(December 2003)
+Update the winreg program to support the
+names with embedded backslashes.
+Problem reported by Antti Ala-heikkil&auml;.
+
+-----------------------------
+Version 19
+(December 2003)
+Update the winreg program to support the
+QWORD registry data type and add an option to ignore errors
+and continue processing.
+
+-----------------------------
+Version 18
+(December 2003)
+Changes by Pascal Hirsch in the odbc program
+corrected error reporting and allow direct connection to ODBC drivers
+without requiring the registration of an ODBC data source.
+The syntax for connecting to ODBC data sources has been slightly changed.
+
+-----------------------------
+Version 17
+(November 2003)
+A fix by Pascal Hirsch in the odbc program
+fixes two access violations, and introduces better error reporting.
+
+-----------------------------
+Version 16
+(September 2003)
+Corrected erroneous pasting of non-Unicode text introduced
+in version 15.
+
+-----------------------------
+Version 15
+(September 2003)
+Corrected problem of random characters appearing at the
+end of winclip output.
+Noted by Robert Bassett.
+
+-----------------------------
+Version 14
+(June 2003)
+Winreg can connect to remote machines over the network.
+Thanks to Antti Ala-Heikkil&auml;.
+-----------------------------
+Version 13
+(Jul 12 2002)
+Added the readlog command;
+winreg handles additional registry entry types.
+-----------------------------
+Version 12
+(Jan 4 2002)
+Winclip supports Unicode text;
+gracefully handles non-ASCII filenames.
+-----------------------------
+Version 11
+(Sep 11 2001)
+Winclip accepts filename argument.
+-----------------------------
+Version 10
+(Jun 1 2000)
+First public release.
+-----------------------------
+Version 09
+Review release.
