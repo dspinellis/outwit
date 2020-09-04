@@ -58,7 +58,7 @@ char *optstring;
 	place = strchr(optstring, c);
 
 	if (place == NULL || c == ':') {
-		fprintf(stderr, "%Fs: unknown option -%c\n", argv[0], c);
+		fprintf(stderr, "%s: unknown option -%c\n", argv[0], c);
 		return('?');
 	}
 
