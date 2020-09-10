@@ -4,7 +4,7 @@
  * Called as getopt(argc, argv, optstring ).
  * Optstring is a string of valid option characters. If a character
  * is followed by '':`` then a name can follow.
- * Returns EOF when the scanning has finished or the option when
+ * Returns WEOF when the scanning has finished or the option when
  * a valid option is found. If an invalid option is found an error
  * is printed in stderr and ''?`` is retured.
  * When scanning is completed the global variable optind is pointing
@@ -19,23 +19,21 @@
  * posted to Usenet net.sources list
  */
 
+#include <wchar.h>
 #include <stdio.h>
 #include <string.h>
 
-char	*optarg;	/* Global argument pointer. */
+wchar_t	*optarg;	/* Global argument pointer. */
 int	optind;	/* Global argv index. */
 
-static char	*scan = NULL;	/* Private scan pointer. */
+static wchar_t	*scan = NULL;	/* Private scan pointer. */
 
 
-int
-getopt(argc, argv, optstring)
-int argc;
-char *argv[];
-char *optstring;
+wint_t
+getopt(int argc, wchar_t *argv[], wchar_t *optstring)
 {
-	register char c;
-	register char *place;
+	wchar_t c;
+	wchar_t *place;
 
 	optarg = NULL;
 
@@ -44,10 +42,10 @@ char *optstring;
 			optind++;
 	
 		if (optind >= argc || argv[optind][0] != '-' || argv[optind][1] == '\0')
-			return(EOF);
-		if (strcmp(argv[optind], "--")==0) {
+			return (WEOF);
+		if (wcscmp(argv[optind], L"--")==0) {
 			optind++;
-			return(EOF);
+			return(WEOF);
 		}
 	
 		scan = argv[optind]+1;
@@ -55,10 +53,10 @@ char *optstring;
 	}
 
 	c = *scan++;
-	place = strchr(optstring, c);
+	place = wcschr(optstring, c);
 
 	if (place == NULL || c == ':') {
-		fprintf(stderr, "%s: unknown option -%c\n", argv[0], c);
+		fwprintf(stderr, L"%s: unknown option -%c\n", argv[0], c);
 		return('?');
 	}
 

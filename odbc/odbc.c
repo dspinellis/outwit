@@ -2,7 +2,7 @@
  *
  * odbc - select data from relational databases
  *
- * (C) Copyright 1999-2010 Diomidis Spinellis
+ * (C) Copyright 1999-2020 Diomidis Spinellis
  *
  * Permission to use, copy, and distribute this software and its
  * documentation for any purpose and without fee is hereby granted,
@@ -14,10 +14,9 @@
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
  * MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  *
- * $Id: odbc.c,v 1.6 2010-11-10 15:31:43 dds Exp $
- *
  */
 
+#include <tchar.h>
 #include <stdio.h>
 #include <string.h>
 #include <conio.h>
@@ -27,26 +26,29 @@
 #include <sql.h>
 #include <sqlext.h>
 
+wint_t getopt(int argc, wchar_t *argv[], wchar_t *optstring);
+
 struct s_coldata {
-	SQLCHAR column_name[1024];
+	SQLWCHAR column_name[1024];
 	SQLSMALLINT column_name_len;
 	SQLSMALLINT data_type;
 	SQLUINTEGER column_size;
 	SQLSMALLINT decimal_digits;
 	SQLSMALLINT nullable;
-	unsigned char *data;
+	wchar_t *data;
 	SQLINTEGER io_len;
 };
 
-extern char	*optarg;	/* Global argument pointer. */
+extern wchar_t	*optarg;	/* Global argument pointer. */
 extern int	optind;		/* Global argv index. */
 
 static void
 version(void)
 {
-	printf(
-		"odbc - select data from relational databases.  $Revision: 1.6 $\n"
-		"(C) Copyright 1999-2003 Diomidis D. Spinelllis.  All rights reserved.\n\n"
+	wprintf(
+		L"odbc - select data from relational databases. "
+		"Version: " SHA "\n"
+		"(C) Copyright 1999-2020 Diomidis D. Spinelllis.  All rights reserved.\n\n"
 
 		"Permission to use, copy, and distribute this software and its\n"
 		"documentation for any purpose and without fee is hereby granted,\n"
@@ -60,10 +62,10 @@ version(void)
 }
 
 static void
-usage(char *fname)
+usage(wchar_t *fname)
 {
-	fprintf(stderr, 
-		"usage: %s [-v] [-R RS] [-F FS] [-h] [-n null] DRVC stmt\n"
+	fwprintf(stderr, 
+		L"usage: %s [-v] [-R RS] [-F FS] [-h] [-n null] DRVC stmt\n"
 		"\tRS\tRecord separator (default is newline)\n"
 		"\tFS\tField separator (default is tab)\n"
 		"\tnull\tNull value string (default is empty)\n"
@@ -85,7 +87,7 @@ void
 report_error(SQLSMALLINT handletype, SQLHANDLE handle)
 {
 	SQLSMALLINT	i = 1;
-	SQLCHAR         SqlState[6], Msg[SQL_MAX_MESSAGE_LENGTH];
+	SQLWCHAR        SqlState[6], Msg[SQL_MAX_MESSAGE_LENGTH];
 	SQLINTEGER      NativeError;
 	SQLSMALLINT     MsgLen;
 	RETCODE         retcode;
@@ -97,22 +99,22 @@ report_error(SQLSMALLINT handletype, SQLHANDLE handle)
 }
 
 int 
-main(int argc, char *argv[])
+wmain(int argc, wchar_t *argv[])
 {
 	RETCODE         retcode;
 	struct s_coldata *coldata;		// Data for every column;
 	int		headings = 0;
 	SQLSMALLINT	numcol, i;
-	char		*field_sep = "\t";
-	char		*null_string = NULL;
-	char		*rec_sep = "\n";
+	wchar_t		*field_sep = L"\t";
+	wchar_t		*null_string = NULL;
+	wchar_t		*rec_sep = L"\n";
 	SQLHENV         henv = SQL_NULL_HENV;
 	SQLHDBC         hdbc1 = SQL_NULL_HDBC;
 	SQLHSTMT        hstmt1 = SQL_NULL_HSTMT;
 	SQLHDESC        hdesc = NULL;
-	char		c;
+	wint_t		c;
 
-	while ((c = getopt(argc, argv, "vR:F:hn:")) != EOF)
+	while ((c = getopt(argc, argv, L"vR:F:hn:")) != WEOF)
 		switch (c) {
 		case 'v':
 			version();
@@ -120,12 +122,12 @@ main(int argc, char *argv[])
 		case 'F':
 			if (!optarg)
 				usage(argv[0]);
-			field_sep = strdup(optarg);
+			field_sep = _wcsdup(optarg);
 			break;
 		case 'R':
 			if (!optarg)
 				usage(argv[0]);
-			rec_sep = strdup(optarg);
+			rec_sep = _wcsdup(optarg);
 			break;
 		case 'h':
 			headings = 1;
@@ -133,7 +135,7 @@ main(int argc, char *argv[])
 		case 'n':
 			if (!optarg)
 				usage(argv[0]);
-			null_string = strdup(optarg);
+			null_string = _wcsdup(optarg);
 			break;
 		case '?':
 			usage(argv[0]);
@@ -156,7 +158,7 @@ main(int argc, char *argv[])
 
 	retcode = SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1);
 
-	retcode = SQLExecDirect(hstmt1, (UCHAR *) argv[optind + 1], SQL_NTS);
+	retcode = SQLExecDirect(hstmt1, argv[optind + 1], SQL_NTS);
 
 	if ((retcode == SQL_SUCCESS_WITH_INFO) || (retcode == SQL_ERROR))
 		report_error(SQL_HANDLE_STMT, hstmt1);
@@ -175,20 +177,20 @@ main(int argc, char *argv[])
 				&(coldata[i].column_size), 
 				&(coldata[i].decimal_digits), 
 				&(coldata[i].nullable));
-			coldata[i].data = (char *)malloc(coldata[i].column_size + 1);
+			coldata[i].data = (wchar_t *)malloc((coldata[i].column_size + 1) * sizeof(wchar_t));
 			retcode = SQLBindCol(hstmt1, i, 
-				SQL_C_CHAR, 
+				SQL_C_WCHAR, 
 				coldata[i].data,
 				coldata[i].column_size + 1,
 				&(coldata[i].io_len));
 			if (headings) {
-				fputs(coldata[i].column_name, stdout);
+				fputws(coldata[i].column_name, stdout);
 				if (i < numcol)
-					fputs(field_sep, stdout);
+					fputws(field_sep, stdout);
 			}
 		}
 		if (headings)
-			fputs(rec_sep, stdout);
+			fputws(rec_sep, stdout);
 	
 		for (;;) {
 			retcode = SQLFetch(hstmt1);
@@ -197,13 +199,13 @@ main(int argc, char *argv[])
 			if (retcode == SQL_SUCCESS || retcode == SQL_SUCCESS_WITH_INFO) {
 				for (i = 1; i <= numcol; i++) {
 					if (coldata[i].io_len != SQL_NULL_DATA)
-						fputs(coldata[i].data, stdout);
+						fputws(coldata[i].data, stdout);
 					else if (null_string != NULL)
-						fputs(null_string, stdout);
+						fputws(null_string, stdout);
 					if (i < numcol)
-						fputs(field_sep, stdout);
+						fputws(field_sep, stdout);
 				}
-				fputs(rec_sep, stdout);
+				fputws(rec_sep, stdout);
 			} else
 				break;
 	

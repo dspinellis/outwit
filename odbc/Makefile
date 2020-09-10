@@ -1,10 +1,14 @@
+SHA=$(shell git rev-parse --short HEAD)
 CC=cl
-#CFLAGS=-nologo -Zi
-CFLAGS=-nologo -Ox
+CFLAGS=-W3 -WX -nologo -DUNICODE -DSHA='"$(SHA)"'
+CFLAGS+=-Zi
+#CFLAGS+=-Ox
 OBJ=odbc.obj getopt.obj
 LIBS=odbc32.lib
 NAME=odbc
 SSH=plink
+
+.SUFFIXES:.obj
 
 .c.obj:
 	$(CC) -c $(CFLAGS) $?
